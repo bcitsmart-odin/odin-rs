@@ -1,0 +1,56 @@
+[package]
+name = "bcit_smart"
+version = "0.1.0"
+edition = "2021"
+build = "../build_resources.rs"
+
+[dependencies]
+# our ODIN crates
+odin_build = { workspace = true }
+odin_action = { workspace = true }
+odin_actor = { workspace = true }
+odin_server = { workspace = true }
+
+odin_common = { workspace = true }
+odin_gdal = { workspace = true }
+odin_cesium = { workspace = true }
+
+tokio = { workspace = true }
+anyhow = "*"
+
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ron = { workspace = true }
+futures = { workspace = true }
+
+async-trait = { workspace = true }
+uom = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+
+serde_with = "*"
+meshgridrs = "*"
+paste = "*"
+structopt = "*"
+lazy_static = "*"
+regex = "*"
+
+flate2 = "1.0" # have to figure out how to get around asset being compressed
+rand = "0.8" # From randomly making data for test
+rand_chacha = "0.3"  # Add this for ChaChaRng
+
+[build-dependencies]
+odin_build = { workspace = true }
+
+[features]
+embedded_resources = []
+
+# [package.metadata.odin_configs]
+# data = { file="data.json" }
+
+[package.metadata.odin_assets]
+bcit_smart_config = { file = "bcit_smart_config.js"}
+bcit_smart = { file = "bcit_smart.js"}
+layer_icon = { file = "button_svg.svg"}
+data = { file="data.json" }

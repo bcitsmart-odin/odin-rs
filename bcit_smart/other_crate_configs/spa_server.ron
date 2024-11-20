@@ -1,0 +1,6 @@
+// This should go in ODIN_HOME/configs/odin_server, adjust the socket address as needed.
+
+ServerConfig(
+    sock_addr: "0.0.0.0:9009",
+    tls: None
+)

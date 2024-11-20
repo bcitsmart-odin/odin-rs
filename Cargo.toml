@@ -24,7 +24,8 @@ members = [
   "opendata_splitter",
   "mkslides",
   "servedoc",
-  "webrun"
+  "webrun",
+  "bcit_smart"
 ]
 
 [workspace.dependencies]
