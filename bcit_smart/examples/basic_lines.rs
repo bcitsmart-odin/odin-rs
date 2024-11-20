@@ -25,8 +25,9 @@ impl SpaService for TestImageService {
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()> {
         spa.add_assets( self_crate!(), odin_server::load_asset);
-        spa.add_module( asset_uri!("ui_windows.js"));
-        spa.add_module( asset_uri!("test_image.js"));
+        let odin_server = "odin_server";
+        spa.add_module( asset_uri!(odin_server, "ui_windows.js"));
+        spa.add_module( asset_uri!(odin_server, "test_image.js"));
         Ok(())
     }
 }
@@ -49,8 +50,8 @@ run_actor_system!( actor_system => {
         "live",
         SpaServiceList::new()
         // Create a service here
+            .add( build_service!( TestImageService{} )) // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
             .add( build_service!( PowerLineService::new(vec![powerline_source])) )
-            // .add( build_service!( TestImageService{} )) // Currently having problems with reimports in the javascript files when using both services
     ))?;
 
     //--- (3) spawn the data source actors we did set up in (1) 
