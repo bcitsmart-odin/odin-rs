@@ -8,6 +8,7 @@ import * as odinCesium from "../odin_cesium/odin_cesium.js";
 const MODULE_PATH = util.asset_path(import.meta.url);
 
 const LINE_TYPE = "testline";
+const POINT_TYPE = "testPoint";
 const LINE_SETTINGS = "powerlineSettings";
 const LINE_DETAILS = "lineDetails";
 
@@ -22,6 +23,76 @@ createIcon();
 createSettingsWindow();
 createDetailsWindow();
 initPowerLineDetailsView();
+
+let pointDataSource = null;
+initOasisPoints();
+function initOasisPoints() {
+    const point = [ -122.9994, 49.2497];
+    
+    if (!pointDataSource) {
+        pointDataSource = new Cesium.CustomDataSource("oasisPoints");
+        odinCesium.addDataSource(pointDataSource);
+    }
+
+    const pointEntity = new Cesium.Entity({
+        position: Cesium.Cartesian3.fromDegrees(point[0], point[1]),
+        point: {
+            pixelSize: 10,
+            color: Cesium.Color.RED,
+        },
+        description: "Oasis EV Chargers", // Tooltip text for the point
+        name: "Oasis EV Chargers", // Name of the entity
+        _type: POINT_TYPE,
+        label: {
+            text: "Oasis Point",
+            font: config.font,
+            fillColor: config.outlineColor,
+            showBackground: true,
+            backgroundColor: config.labelBackground,
+            //heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
+            verticalOrigin: Cesium.VerticalOrigin.TOP,
+            pixelOffset: new Cesium.Cartesian2( 5, 5),
+            scaleByDistance: new Cesium.NearFarScalar(
+                500.0, 1.0, // Full visibility at 100 meters
+                2000.0, 0.4 // Half visibility at 1000 meters
+            )
+        }
+    });
+    const point2 = [-122.9985, 49.2493];
+    const pointEntity2  = new Cesium.Entity({
+        position: Cesium.Cartesian3.fromDegrees(point2[0], point2[1]),
+        point: {
+            pixelSize: 10,
+            color: Cesium.Color.RED,
+        },
+        description: "Oasis Point Example", // Tooltip text for the point
+        name: "Oasis Point", // Name of the entity
+        _type: POINT_TYPE,
+        label: {
+            text: "Oasis Battery Bank",
+            font: config.font,
+            fillColor: config.outlineColor,
+            showBackground: true,
+            backgroundColor: config.labelBackground,
+            //heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+            horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
+            verticalOrigin: Cesium.VerticalOrigin.TOP,
+            pixelOffset: new Cesium.Cartesian2( 5, 5),
+            scaleByDistance: new Cesium.NearFarScalar(
+                500.0, 1.0, // Full visibility at 100 meters
+                2000.0, 0.4 // Half visibility at 1000 meters
+            )
+        }
+    });
+
+    // Add the point entity to the data source
+    pointDataSource.entities.add(pointEntity);
+    pointDataSource.entities.add(pointEntity2);
+
+    // Request a render update (if necessary)
+    odinCesium.requestRender();
+}
 
 // Handles clicking on a powerline
 odinCesium.setEntitySelectionHandler(powerlineSelection);
@@ -52,8 +123,14 @@ function createSettingsWindow() {
         ui.LayerPanel(LINE_SETTINGS, toggleShowLines),
         ui.Panel("data sets", true)(
             ui.CheckBox("show lines", toggleShowLines, "lines"),
-        )
+        ),
+        ui.Button("Send message back to server", sendHello)
     );
+}
+
+function sendHello() {
+    console.log("Test of sending message back to server");
+    ws.sendWsMessage("bcit_smart/bcit_smart", "string", "hello");
 }
 
 function createDetailsWindow() {

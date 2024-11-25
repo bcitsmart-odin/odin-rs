@@ -14,6 +14,7 @@ use serde::{Serialize,Deserialize};
 use odin_build::prelude::*;
 use odin_actor::prelude::*;
 use odin_server::prelude::*;
+use odin_server::spa::WebSocketMessage;
 use odin_cesium::ImgLayerService;
 
 use crate::{load_asset, load_config};
@@ -54,8 +55,9 @@ impl PowerLineService {
 
 #[async_trait]
 impl SpaService for PowerLineService {
-    fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
-        spa_builder.add( build_service!( ImgLayerService::new()))
+    async fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
+        spa_builder
+            .add( build_service!( ImgLayerService::new())).await
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()>  {
@@ -125,6 +127,21 @@ impl SpaService for PowerLineService {
             hupdater.send_msg( ExecSnapshotAction(action)).await?;
         }
 
+        Ok(())
+    }
+
+    async fn handle_incoming_ws_msg (&mut self, msg: String) -> OdinServerResult<()> {
+        println!("Handling incoming ws msg, {}", msg);
+        match serde_json::from_str::<WebSocketMessage>(&msg) {
+            Ok(parsed_msg) => {
+                let target_module = parsed_msg.module;
+                let payload = parsed_msg.payload;
+
+                println!("target module: {}", target_module);
+                println!("payload: {}", payload);
+            }
+            Err(e) => println!("Failed to parse WebSocket message: {:?}", e),
+        }
         Ok(())
     }
 }

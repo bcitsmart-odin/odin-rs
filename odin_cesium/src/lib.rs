@@ -43,10 +43,10 @@ impl CesiumService {
 #[async_trait]
 impl SpaService for CesiumService {
 
-    fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
+    async fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
         spa_builder
-            .add( build_service!( UiService::new()))
-            .add( build_service!( WsService::new()))
+            .add( build_service!( UiService::new())).await
+            .add( build_service!( WsService::new())).await
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()>  {
@@ -107,9 +107,10 @@ impl ImgLayerService {
 // note that requests will fail if we copy all headers
 const OSM_HDR: &[&str] = &["user-agent","referer","accept","accept-encoding"]; 
 
+#[async_trait::async_trait]
 impl SpaService for ImgLayerService {
-    fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
-        spa_builder.add( build_service!( CesiumService::new()))
+    async fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
+        spa_builder.add( build_service!( CesiumService::new())).await
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()> {

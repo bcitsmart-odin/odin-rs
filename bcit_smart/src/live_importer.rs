@@ -115,7 +115,7 @@ async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, conf
     //--- run update loop
     loop {
         // Gonna update every 15secs to start for testing, should maybe swap this to depend on time since last finished loop
-        sleep( secs(15)).await;
+        sleep( secs(45)).await;
 
         let data = read_data_from_file(&source).await?;
         let mut powerlines = convert_file_data_to_powerline_struct(data);

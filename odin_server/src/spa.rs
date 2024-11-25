@@ -13,7 +13,7 @@
  */
 #![allow(unused)]
 
-use std::{boxed, collections::HashMap, sync::{Arc,Mutex}, ops::{Deref,DerefMut},
+use std::{boxed, collections::HashMap, sync::Arc, ops::{Deref,DerefMut},
     net::SocketAddr, future::{Future,ready}, time::SystemTime, 
     path::{PathBuf}, any::type_name, fmt::Write,
     result::Result, error::Error
@@ -42,7 +42,9 @@ use reqwest::{header::{self, SET_COOKIE}, Client, RequestBuilder};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware, RequestBuilder as MwRequestBuilder};
 use http_cache_reqwest::{Cache, CacheMode, CACacheManager, HttpCache, HttpCacheOptions};
 use serde::{Deserialize,Serialize};
+use serde_json::Value;
 use async_trait::async_trait;
+use tokio::sync::Mutex;
 
 use odin_build::LoadAssetFp;
 use odin_common::{fs::get_file_basename,strings::{self, mk_query_string}};
@@ -52,13 +54,23 @@ use odin_actor::prelude::*;
 use crate::{spawn_server_task, get_asset_response,ServerConfig};
 use crate::errors::{connect_error, init_error, op_failed, OdinServerError, OdinServerResult};
 
+#[derive(Deserialize, Debug)]
+pub struct WebSocketMessage {
+    #[serde(rename = "mod")]
+    pub module: String,
+    #[serde(flatten)]
+    pub payload: Value,
+}
+
+
+
 /// the trait that abstracts a single page application service, which normally represents a visualization
 /// layer with its own data (either dynamic or static) and document assets (such as Javascript modules
 /// and images) or fragments (HTML elements)
 #[async_trait]
 pub trait SpaService: Send + Sync + 'static {
     /// override this if the service depends on other services. Default is it doesn't
-    fn add_dependencies (&self, sb: SpaServiceList)->SpaServiceList {sb} // defaut is no dependencies
+    async fn add_dependencies (&self, sb: SpaServiceList)->SpaServiceList {sb} // defaut is no dependencies
     
     /// this adds document fragments and route data for this micro service
     /// Called during server construction to accumulate components of all included SpaServices
@@ -118,21 +130,22 @@ impl DerefMut for SpaSvc {
 /// Each service type is included just once, in the order of first occurrence
 pub struct SpaServiceList {
     seen: Vec<&'static str>,
-    services: Vec<SpaSvc>
+    services: Arc<Mutex<Vec<SpaSvc>>>
 }
 
 impl SpaServiceList {
-    pub fn new ()->Self { SpaServiceList{seen: Vec::new(), services: Vec::new()} }
+    pub fn new ()->Self { SpaServiceList{seen: Vec::new(), services: Arc::new(Mutex::new(Vec::new()))} }
 
-    pub fn add<F,T> (self, svc_ctor: F)->Self where F: FnOnce()->T, T: SpaService + 'static {
+    pub async fn add<F,T> (self, svc_ctor: F)->Self where F: FnOnce()->T, T: SpaService + 'static {
+        println!("Adding Service to SpaService List");
         let name = type_name::<T>();
         if !self.seen.contains(&name) {
             let svc = svc_ctor();
-            let mut sb = svc.add_dependencies( self);
+            let mut sb = svc.add_dependencies( self).await;
             sb.seen.push(name);
 
             let svc_state = SpaSvc::new(svc);
-            sb.services.push( svc_state);
+            sb.services.lock().await.push( svc_state);
 
             sb
         } else {
@@ -167,7 +180,7 @@ pub struct SpaServerState {
 pub struct SpaServer {
     config: ServerConfig,
     name: String, // this is not from the config so that we can have the same for different apps
-    services: Vec<SpaSvc>,
+    services: Arc<Mutex<Vec<SpaSvc>>>,
 
     connections: HashMap<SocketAddr,SpaConnection>, // updated when receiving an AddConnection actor message
     server_task: Option<JoinHandle<()>>, // for the server task itself, initialized upon _Start_
@@ -185,8 +198,8 @@ impl SpaServer {
         }
     }
 
-    fn requires_websocket (&self)->bool {
-        self.services.iter().find( |s| s.is_websocket()).is_some()
+    async fn requires_websocket (&self)->bool {
+        self.services.lock().await.iter().find( |s| s.is_websocket()).is_some()
     }
 
     fn has_connections (&self)->bool {
@@ -194,7 +207,7 @@ impl SpaServer {
     }
 
     /// called when receiving _Start_ message
-    fn start_server (&mut self, hself: ActorHandle<SpaServerMsg>)->OdinServerResult<()> {
+    async fn start_server (&mut self, hself: ActorHandle<SpaServerMsg>)->OdinServerResult<()> {
         if self.server_task.is_none() {
             if cfg!(feature="trace_server") {
                 // note this only succeeds if there is no global subscriber set yet
@@ -205,7 +218,7 @@ impl SpaServer {
             }
 
             println!("serving SPA on {}/{}", self.config.url(), self.name);
-            let router = self.build_router( &hself)?;
+            let router = self.build_router( &hself).await?;
             self.server_task = Some(spawn_server_task( &self.config, router));
             Ok(())
 
@@ -214,8 +227,9 @@ impl SpaServer {
         }
     }
 
-    fn build_router (&self, hself: &ActorHandle<SpaServerMsg>)->OdinServerResult<Router> {
-        let comps = SpaComponents::from_svcs( &self.services)?;
+    async fn build_router (&self, hself: &ActorHandle<SpaServerMsg>)->OdinServerResult<Router> {
+        let services = self.services.lock().await;
+        let comps = SpaComponents::from_svcs( &services)?;
         let doc = Arc::new(comps.to_html( &self.name));
         let proxies = comps.proxies;
         let assets = comps.assets;
@@ -321,9 +335,14 @@ impl SpaServer {
     /// called when receiving AddConnection message
     /// note that we shouldn't block in an await for sending to ourselves
     async fn add_connection(&mut self, hself: ActorHandle<SpaServerMsg>, remote_addr: SocketAddr, ws: WebSocket)->OdinServerResult<()> {
+        println!("trying to add a connection for the WS");
+        println!("Remote Address: {:?}", remote_addr);
+        println!("Web Socket: {:?}", ws);
         let raddr = remote_addr.clone();
         let name = raddr.to_string();
         let (mut ws_sender, mut ws_receiver) = ws.split();
+
+        let services = Arc::clone(&self.services);
 
         let ws_receiver_task = {
             let hself = hself.clone();
@@ -334,8 +353,46 @@ impl SpaServer {
                     match msg.into_text() {
                         Ok(msg) => {
                             if !msg.is_empty() {
-                                println!("@@ received ws: {}", msg)
+                                println!("@@ received ws: {}", msg);
+                                println!("Remote Address: {}", remote_addr);
                                 // dispatch to respective SpaService handler here
+
+                                // Parse the message
+                                match serde_json::from_str::<WebSocketMessage>(&msg) {
+                                    Ok(parsed_msg) => {
+                                        let target_module = parsed_msg.module;
+                                        let payload = parsed_msg.payload;
+
+                                        // Find the target service and handle the message
+                                        // TODO not sure how to do this, SpaService is a trait with no guarenteed fields or identifier
+                                        // So I am just sending the message to all Services to decide themselves if they need to act on
+                                        // the message or not.
+
+                                        // Using a mutex because multiple tasks want a &mut to the same service, not sure if needed,
+                                        // requires a large code update so that all functions using this field have to now be async,
+                                        // possibly rethink later. 
+                                        let mut services = services.lock().await;
+                                        let mut handled = false;
+
+                                        for svc in services.iter_mut() {
+                                            svc.service
+                                                .handle_incoming_ws_msg(msg.clone())
+                                                .await
+                                                .map_err(|e| {
+                                                    println!("Error handling WebSocket message: {:?}", e);
+                                                    e
+                                                })
+                                                .expect("Error handling ws message");
+                                            handled = true;
+                                            // break;
+                                        }
+
+                                        if !handled {
+                                            println!("No service found to handle module: {}", target_module);
+                                        }
+                                    }
+                                    Err(e) => println!("Failed to parse WebSocket message: {:?}", e),
+                                }
                             }
                         }
                         Err(e) => println!("ignoring binary message")
@@ -350,7 +407,7 @@ impl SpaServer {
         self.connections.insert( raddr, conn);
         let conn_ref = self.connections.get_mut( &raddr).unwrap();
 
-        for svc in self.services.iter_mut() { // tell services to send their initial data
+        for svc in self.services.lock().await.iter_mut() { // tell services to send their initial data
             svc.service.init_connection( &hself, svc.is_data_available, conn_ref).await.map_err(|e| connect_error(e))?;
         }
 
@@ -367,7 +424,7 @@ impl SpaServer {
     async fn data_available (&mut self, hself: ActorHandle<SpaServerMsg>, sender_id: &'static str, data_type: &'static str)->OdinServerResult<()> {
         let has_connections = self.has_connections();
 
-        for svc in self.services.iter_mut() {
+        for svc in self.services.lock().await.iter_mut() {
             match svc.data_available( &hself, has_connections, sender_id, data_type).await {
                 Ok(true) => svc.is_data_available = true,
                 Ok(false) => {}
@@ -447,11 +504,12 @@ define_actor_msg_set! { pub SpaServerMsg = AddConnection | DataAvailable | Broad
 impl_actor! { match msg for Actor<SpaServer,SpaServerMsg> as
     _Start_ => cont! { 
         let hself = self.hself.clone();
-        if let Err(e) = self.start_server( hself) {
+        if let Err(e) = self.start_server( hself).await {
             error!("failed to start server: {e:?}");
         }
     }
     AddConnection => cont! {
+        println!("SPA Server Actor Adding a connection");
         let hself = self.hself.clone();
         if let Err(e) = self.add_connection( hself, msg.remote_addr, msg.ws).await {
             error!("failed to add connection to {:?}: {:?}", msg.remote_addr, e);
@@ -611,9 +669,9 @@ impl SpaComponents {
         Ok(comps)
     }
 
-    pub fn from (svc_list: &SpaServiceList)->OdinServerResult<SpaComponents> {
+    pub async fn from (svc_list: &SpaServiceList)->OdinServerResult<SpaComponents> {
         let mut comps = SpaComponents::new();
-        for svc in &svc_list.services {
+        for svc in &*svc_list.services.lock().await {
             svc.add_components( &mut comps).map_err(|e| init_error(e))?;
         }
         Ok(comps)
