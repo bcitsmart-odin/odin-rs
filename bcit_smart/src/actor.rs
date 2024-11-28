@@ -1,5 +1,4 @@
 //! actors for powerline data
-
 use odin_actor::prelude::*;
 use odin_build::prelude::*;
 
@@ -41,7 +40,7 @@ pub struct PowerLine {
 }
 
 impl PowerLine {
-    pub fn new (data: &PowerLineData, pow_id: u32, position: LatLon, position2: LatLon, time: String)->Self {
+    pub fn new (pow_id: u32, position: LatLon, position2: LatLon, time: String)->Self {
         PowerLine {
             pow_id,
             positions: vec![position, position2],
@@ -121,7 +120,7 @@ impl <IMP, U, I> PowerLineActor<IMP, U, I>
         println!("Init function of PowerLineActor");
         self.powerline_store = init_powerlines.clone(); // should think about this more we already have an empty array at start
         println!("{:?}", init_powerlines);
-        // TODO should there be handling for a failed init execite?
+        // TODO should there be handling for a failed init execute?
         let _ = self.init_action.execute(&self.powerline_store).await;
         Ok(())
     }
@@ -129,7 +128,7 @@ impl <IMP, U, I> PowerLineActor<IMP, U, I>
     pub async fn update (&mut self, new_powerlines: PowerLineSet) -> Result<()> {
         println!("update on PowerLineActor");
         self.powerline_store.push(new_powerlines.clone());
-        // TODO should there be handling for a failed update execite?
+        // TODO should there be handling for a failed update execute?
         let _ = self.update_action.execute(new_powerlines).await;
         Ok(())
     }
@@ -166,7 +165,7 @@ impl_actor! { match msg for Actor< PowerLineActor<IMP, U, I>, PowerLineImportAct
     // ImportError => cont! { error!("{:?}", msg.0); } // think about errors later
     
     _Terminate_ => stop! { 
-        // self.powerline_importer.terminate();   // When we setup an import struct we may have to stop it safely
+        self.powerline_importer.terminate();   // When we setup an import struct we may have to stop it safely
     }
 }
 

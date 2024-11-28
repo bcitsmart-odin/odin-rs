@@ -36,9 +36,12 @@ structopt = "*"
 lazy_static = "*"
 regex = "*"
 
-flate2 = "1.0" # have to figure out how to get around asset being compressed
 rand = "0.8" # From randomly making data for test
 rand_chacha = "0.3"  # Add this for ChaChaRng
+csv = "*" # For reading the Oasis Power Data file
+
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
 
 [build-dependencies]
 odin_build = { workspace = true }

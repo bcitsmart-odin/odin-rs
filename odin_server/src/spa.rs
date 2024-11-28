@@ -332,12 +332,13 @@ impl SpaServer {
         }
     }
 
+    // TODO Clean up the pront messages
     /// called when receiving AddConnection message
     /// note that we shouldn't block in an await for sending to ourselves
     async fn add_connection(&mut self, hself: ActorHandle<SpaServerMsg>, remote_addr: SocketAddr, ws: WebSocket)->OdinServerResult<()> {
         println!("trying to add a connection for the WS");
         println!("Remote Address: {:?}", remote_addr);
-        println!("Web Socket: {:?}", ws);
+        // println!("Web Socket: {:?}", ws);
         let raddr = remote_addr.clone();
         let name = raddr.to_string();
         let (mut ws_sender, mut ws_receiver) = ws.split();

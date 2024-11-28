@@ -49,7 +49,6 @@ pub enum BcitSmartError {
 
     #[error("UTF-8 conversion error {0}")]
     Utf8Error(#[from] std::string::FromUtf8Error),
-
 }
 
 pub fn misc_error (msg: impl ToString)->BcitSmartError {

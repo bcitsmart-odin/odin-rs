@@ -1,4 +1,5 @@
 use crate::*;
+use odin_build::decompress_vec;
 use odin_common::fs::{ensure_writable_dir, remove_old_files};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -6,8 +7,6 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 
-use std::io::Read;
-use flate2::read::GzDecoder;
 use rand::Rng;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
@@ -94,14 +93,15 @@ impl PowerLineDataImporter for LivePowerLineImporter {
     }
 }
 
-async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, config: LivePowerLineImporterConfig, cache_dir: Arc<PathBuf>)->Result<()> {
+// TODO think about if we should caching results
+async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, config: LivePowerLineImporterConfig, _cache_dir: Arc<PathBuf>)->Result<()> {
     println!("running data acquisition");
     let source = Arc::new(config.source); // no need to keep gazillions of copies
-    let pow_id = config.pow_id;
+    let _pow_id = config.pow_id; // can get different config info if needed
 
     // Need to start by sending the Initialize message that will have all the past data they need too.
     // Need to think more about this start point and how to update from it minimally
-    let data = read_data_from_file(&source).await?;
+    let data = read_powerline_data_from_asset_file(&source).await?;
 
     println!("Data read from file {:?}", data);
 
@@ -117,7 +117,7 @@ async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, conf
         // Gonna update every 15secs to start for testing, should maybe swap this to depend on time since last finished loop
         sleep( secs(45)).await;
 
-        let data = read_data_from_file(&source).await?;
+        let data = read_powerline_data_from_asset_file(&source).await?;
         let mut powerlines = convert_file_data_to_powerline_struct(data);
 
         let mut rng = ChaChaRng::from_entropy();  // Use ChaChaRng instead of ThreadRng because async
@@ -134,23 +134,19 @@ async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, conf
 
         hself.send_msg(Update(powerlines_set)).await?;
     }
-
-    Ok(())
 }
 
-async fn read_data_from_file(file_source: &str) -> Result<Vec<PowerLineDataPoint>> {
+async fn read_powerline_data_from_asset_file(file_source: &str) -> Result<Vec<PowerLineDataPoint>> {
     println!("File Path to open: {}", file_source);
 
     let data = load_asset(file_source).expect(&format!("Didn't open file, {}", file_source));
     println!("found file");
 
-    let mut decoder = GzDecoder::new(&data[..]);
-    let mut decompressed_data = String::new();
-    decoder.read_to_string(&mut decompressed_data).expect("Failed to decompress data");
+    let decompressed_data = decompress_vec(&data).unwrap();
 
     println!("Decompressed content: {:?}", decompressed_data);
 
-    let data: Vec<PowerLineDataPoint> = serde_json::from_str(&decompressed_data)?;
+    let data: Vec<PowerLineDataPoint> = serde_json::from_slice(&decompressed_data)?;
     return Ok(data)
 }
 

@@ -14,6 +14,13 @@ pub use bcit_smart::actor::*;
 
 pub use bcit_smart::live_importer::*;
 
+pub use bcit_smart::oasis_actor::*;
+
+use tracing::Level;
+
+use tokio;
+use anyhow;
+
 pub struct TestImageService {}
 
 #[async_trait::async_trait]
@@ -25,14 +32,22 @@ impl SpaService for TestImageService {
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()> {
         spa.add_assets( self_crate!(), odin_server::load_asset);
-        let odin_server = "odin_server";
         spa.add_module( asset_uri!(odin_server, "ui_windows.js"));
         spa.add_module( asset_uri!(odin_server, "test_image.js"));
         Ok(())
     }
 }
 
-run_actor_system!( actor_system => {
+#[tokio::main]
+async fn main ()->anyhow::Result<()> {
+    odin_build::set_bin_context!();
+    let mut actor_system = ActorSystem::new("main");
+    actor_system.request_termination_on_ctrlc();
+
+    // Customized debug messages because some of them were pages long when sending larger messages
+    // bcit_smart::create_customized_tracing_subscriber(None);
+    bcit_smart::create_customized_tracing_subscriber(Some(Level::DEBUG));
+
     //--- (1) set up PowerLines data source handle
     // Have to create a preactor handle to the PowerLine actor so that it can be handed Spa Actor before it is created.
     let preactor_handle_powerline = PreActorHandle::new ( &actor_system, "powerline", 8);
@@ -63,10 +78,26 @@ run_actor_system!( actor_system => {
         cleanup_interval: minutes(15),
         max_age: hours(3) 
     };
+
+    let _hoasis_actor = spawn_actor!( actor_system, "oasis", OasisActor::new(
+        dataref_action!( hserver.clone(): ActorHandle<SpaServerMsg> => |_store:&OasisDataSet| {
+            println!("OASIS! This should be executed by the init action");
+            Ok( hserver.try_send_msg( DataAvailable{ sender_id: "oasis", data_type: type_name::<OasisDataSet>()} )? )
+        }),
+        data_action!( hserver.clone(): ActorHandle<SpaServerMsg> => |oasis_data:OasisDataSet| {
+            println!("OASIS! This should be executed by the update action");
+            let data = ws_msg!("bcit_smart/bcit_smart.js",oasis_data).to_json()?;
+            Ok( hserver.try_send_msg( BroadcastWsMsg{data})? )
+        }),
+    ))?;
+
     let _hpowerline = spawn_powerline_updater( &mut actor_system, "powerline", preactor_handle_powerline, powerline_importer_config, &hserver)?;
 
+    actor_system.timeout_start_all(secs(2)).await?;
+    actor_system.process_requests().await?;
+
     Ok(())
-});
+}
 
 fn spawn_powerline_updater (
     actor_system: &mut ActorSystem,
