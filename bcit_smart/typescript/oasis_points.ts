@@ -15,209 +15,9 @@ import * as odinCesium from "../odin_cesium/odin_cesium.js";
 
 declare const Cesium: typeof import("cesium");
 declare const Chart: typeof import("chart.js");
+import type { ChartOptions, ChartScales, LinearScale, TimeScale } from "chart.js";
 
-const MODULE_PATH = util.asset_path(import.meta.url);
-
-const POINT_TYPE = "testPoint";
-const OASIS_SETTINGS = "oasisSettings";
-const POINT_DETAILS = "pointDetails";
-
-ws.addWsHandler( MODULE_PATH, handleWsMessages);
-
-//--- display params we can change from config file can be extracted here as Consts
-
-
-let selectedOasisPoint = "";
-let oasis_data: OasisDataType[] = [];
-
-createIcon();
-createSettingsWindow();
-createDetailsWindow();
-initPowerLineDetailsView();
-
-odinCesium.setEntitySelectionHandler(oasisPointSelection);
-
-odinCesium.initLayerPanel(OASIS_SETTINGS, config, toggleOasisPoints);
-odinCesium.initLayerPanel(POINT_DETAILS, config, () => null);
-
-let pointDataSource = null;
-if (config.layer.show) {
-    console.log("should show points load");
-    initOasisPoints();
-}
-console.log("ui_bcit_smart initialized");
-
-
-function createIcon() {
-    // return ui.Icon("./asset/bcit_smart/powerline_icon.svg", (e)=> ui.toggleWindow(e,LINE_SETTINGS));
-    return ui.Icon("./asset/odin_cesium/globe.svg", (e)=> ui.toggleWindow(e,OASIS_SETTINGS));
-}
-
-function createSettingsWindow() {
-    return ui.Window("Test Oasis Data", OASIS_SETTINGS, "./asset/bcit_smart/button_svg.svg")(
-        ui.LayerPanel(OASIS_SETTINGS, toggleShowPoints),
-    );
-}
-
-function createDetailsWindow() {
-    const testSpan = document.createElement("span");
-    testSpan.id = "point-details-name";
-    return ui.Window("Point Details", POINT_DETAILS, "./asset/bcit_smart/button_svg.svg")(
-        testSpan,
-        ui.Panel("data sets", true, "oasis-details-window")(
-            ui.CheckBox("show lines", toggleShowPoints, "lines"),
-            ui.List("powerlines.selectedPowerline", 3, () => console.log("When is this called?")),
-        )
-    );
-}
-
-function toggleShowPoints(event) {
-    let cb = ui.getCheckBox(event.target);
-    console.log(event.target);
-    if (cb) {
-        toggleOasisPoints( ui.isCheckBoxSelected(cb));
-    }
-}
-
-function toggleOasisPoints(showLines) {
-    console.log("Toggle Test Lines" + showLines);
-    if (pointDataSource === null) {
-        initOasisPoints();
-    }
-    pointDataSource.show = showLines ?? true;
-    odinCesium.requestRender();
-}
-
-function clearEntities() {
-    if (pointDataSource) {
-        pointDataSource.entities.removeAll();
-    }
-}
-
-function oasisPointSelection() {
-    let sel = odinCesium.getSelectedEntity();
-    if (sel && sel._type && sel._type == POINT_TYPE) {
-        console.log("Window should open");;
-        console.log("Selection", sel);
-        ui.showWindow(POINT_DETAILS);
-        ui.setWindowLocation(ui.getWindow(POINT_DETAILS), 200, 200);
-        ui.setListItems("powerlines.selectedPowerline", [sel]);
-        selectedOasisPoint = sel.name;
-        let detailsWindow : HTMLDivElement = ui.getWindow(POINT_DETAILS);
-        console.log("detailsWindiw", detailsWindow);
-        // let children = detailsWindow.children;
-        // children[0].
-
-        // Replace the title in the `ui_titlebar`
-        const titleBar = detailsWindow.querySelector(".ui_titlebar");
-        if (titleBar) {
-            const titleTextNode = Array.from(titleBar.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
-            if (titleTextNode) {
-                titleTextNode.nodeValue = selectedOasisPoint;
-            }
-        }
-
-        // Replace the content in the `ui_window_content`
-        const content = detailsWindow.querySelector(".ui_window_content");
-        if (content) {
-            // Clear the existing content
-            content.innerHTML = "";
-
-            // Create a canvas for the Chart.js chart
-            const canvas = document.createElement("canvas");
-            canvas.style.height = "400px"; // Set the height
-            canvas.style.width = "1000px"; // Set the width
-            canvas.id = "chartCanvas";
-            content.appendChild(canvas);
-
-            let timeStamps = oasis_data.map(row => row.timestamp);
-            // console.log(firstDate);
-            const labels = oasis_data
-
-            // Initialize Chart.js
-            const ctx = canvas.getContext("2d");
-            const myChart = new Chart(ctx, {
-                type: "line", // Example: Bar chart
-                data: {
-                    labels: oasis_data.map(row => row.timestamp),
-                    datasets: [{
-                        label: "Battery Group 1.DC Power",
-                        data: oasis_data.map(row => row["Battery Group 1.DC Power"]),
-                        borderColor: [
-                            'rgba(255, 99, 132, 1)',
-                        ],
-                        pointRadius: 0,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: "Oasis Data Line Chart"
-                        },
-                        zoom: {
-                            pan: {
-                                enabled: true,
-                                mode: "x"
-                            },
-                            zoom: {
-                                wheel: {
-                                    enabled: true, // Enable zooming with mouse wheel
-                                },
-                                pinch: {
-                                    enabled: true
-                                },
-                                mode: "x"
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            type: "time", // Use time scale for X-axis
-                            time: {
-                                parser: "YYYY-MM-DDTHH:mm:ssZ",
-                                tooltipFormat: "ll HH:mm", // Tooltip formatting
-                                unit: "day" // Adjust time unit
-                            },
-                            title: {
-                                display: true,
-                                text: "Timestamp"
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: "Power (kW)"
-                            },
-                            min: -5,
-                            max: 5,
-                        }
-                    }
-                }
-            } as any);
-        }
-    }
-    console.log("selected entity: ");
-    console.log(sel);
-}
-
-// function BuildOasisPointDetailsVisualization(pointName: string, window: HTMLElement<div> ) {
-
-// }
-
-//--- data messages
-
-function handleWsMessages(msgType, msg) {
-    console.log("GOT A WS MESSAGE ON OASIS");
-    console.log(msgType);
-    console.log(msg);
-    switch (msgType) {
-        case "oasis_data": handleOasisDataSet(msg); break;
-    }
-}
-
-type OasisDataType = {
+type OasisDataTypeFromServer = {
     "BESS.DC Power": number | null, 
     "Battery Group 1.DC Power": number | null,
     "Battery Group 2.DC Power": number | null,
@@ -231,53 +31,266 @@ type OasisDataType = {
     "timestamp": string,
 }
 
+type OasisDataType = {
+    [K in (typeof OASIS_DATA_TITLES)[number]]: (number | null)[];
+};
 
-function handleOasisDataSet(new_oasis_data: OasisDataType[]) {
-    console.log("Going add the oasisData");
-    // oasis_data = new_oasis_data;
-    oasis_data = new_oasis_data.slice(0, Math.min(new_oasis_data.length, 365));
-    
-    // if (pointDataSource === null) {
-    //     pointDataSource = new Cesium.CustomDataSource(POINT_TYPE);
-    // }
+type OasisLineChartDataType = {
+    timestamp: string[]
+    data: OasisDataType
+}
 
-    // // Think about how to handle updates as in replacing data // updating already received data etc..
-    // // For now just going to replace everything on update
-    // pointDataSource.entities.removeAll();
+const MODULE_PATH = util.asset_path(import.meta.url);
 
+const POINT_TYPE = "oasisPoint";
+const OASIS_SETTINGS = "oasisSettings";
+const POINT_DETAILS = "oasisPointDetails";
+
+const ENERGY_OASIS_NAME = "BCIT's Energy Oasis";
+
+const BCIT_OASIS_CAMERA_POSITION = Cesium.Cartesian3.fromDegrees(-123.0032, 49.2504, 1725);
+
+const OASIS_DATA_TITLES = [
+    "BESS.DC Power", 
+    "Battery Group 1.DC Power",
+    "Battery Group 2.DC Power",
+    "Battery Group 3.DC Power",
+    "Battery Group 4.DC Power",
+    "Inverter.Active Power",
+    // "L2 7650 Meter.Active Power", // No data so skipping this one
+    "OASIS POI.Active Power",
+    "PV.DC Power",
+] as const;
+
+const CHART_COLORS = [
+    { label: "Red", rgba: "rgba(255, 99, 132, 1)" },
+    { label: "Blue", rgba: "rgba(54, 162, 235, 1)" },
+    { label: "Green", rgba: "rgba(34, 139, 34, 1)" },
+    { label: "Yellow", rgba: "rgba(255, 255, 102, 1)" },
+    { label: "Purple", rgba: "rgba(153, 102, 255, 1)" },
+    { label: "Orange", rgba: "rgba(255, 159, 64, 1)" },
+    { label: "Teal", rgba: "rgba(64, 224, 208, 1)" },
+    { label: "Pink", rgba: "rgba(255, 182, 193, 1)" },
+    { label: "Gray", rgba: "rgba(128, 128, 128, 1)" },
+    { label: "Cyan", rgba: "rgba(0, 255, 255, 1)" }
+];
+
+ws.addWsHandler( MODULE_PATH, handleWsMessages);
+
+//--- display params we can change from config file can be extracted here as Consts
+
+let oasisPointsDataSource = null;
+let oasis_data: OasisLineChartDataType;
+let selectedOasisPoint = "";
+
+createOasisIcon();
+createOasisSettingsWindow();
+createOasisDetailsWindow();
+
+odinCesium.setEntitySelectionHandler(oasisPointSelection);
+
+odinCesium.initLayerPanel(OASIS_SETTINGS, config, toggleOasisPoints);
+odinCesium.initLayerPanel(POINT_DETAILS, config, () => null);
+
+if (config.layer.show) {
+    initOasisPoints();
+}
+console.log("ui_bcit_smart initialized");
+
+
+function createOasisIcon() {
+    return ui.Icon("./asset/odin_cesium/globe.svg", (e)=> ui.toggleWindow(e,OASIS_SETTINGS));
+}
+
+/**
+ *  Window that opens when you click on an Energy Oasis Icon.
+ *  Has controls for the Energy Oasis Points.
+ */
+function createOasisSettingsWindow() {
+    return ui.Window("Test Oasis Data", OASIS_SETTINGS, "./asset/bcit_smart/button_svg.svg")(
+        ui.LayerPanel(OASIS_SETTINGS, checkboxToggleShowPoints),
+    );
+}
+
+/**
+ *  Window that opens when you click on an Energy Oasis point of interest
+ *  Contents of this window get changed by the chart creation
+ */
+function createOasisDetailsWindow() {
+    const testSpan = document.createElement("span");
+    testSpan.id = "point-details-name";
+    return ui.Window("Point Details", POINT_DETAILS, "./asset/bcit_smart/button_svg.svg")(
+        testSpan,
+        ui.Panel("data sets", true, "oasis-details-window")(
+            ui.CheckBox("show lines", checkboxToggleShowPoints, "lines"),
+            ui.List("powerlines.selectedPowerline", 3, () => console.log("When is this called?")),
+        )
+    );
+}
+
+function checkboxToggleShowPoints(event) {
+    const cb = ui.getCheckBox(event.target);
+    if (cb) {
+        toggleOasisPoints( ui.isCheckBoxSelected(cb));
+    }
+}
+
+function toggleOasisPoints(showLines) {
+    if (oasisPointsDataSource === null) {
+        initOasisPoints();
+    }
+    oasisPointsDataSource.show = showLines ?? true;
     odinCesium.requestRender();
 }
 
-function initPowerLineDetailsView() {
-    const view = ui.getList("powerlines.selectedPowerline");
-    if (view) {
-        ui.setListItemDisplayColumns(view, ["fit", "header"], [
-            { name: "powId", tip: "Id of line", width: "3rem", attrs: [], map: e => e.powId },
-            { name: "time", tip: "last report", width: "8rem", attrs: ["fixed", "alignRight"], map: e => e.time }
-        ]);
+/**
+ * Registered with odinCessium to be called when an entity is clicked.
+ * Checks to see if it was entity it is responsible for (Energy Oasis Points) 
+ */
+function oasisPointSelection() {
+    const sel = odinCesium.getSelectedEntity();
+    if (sel && sel._type && sel._type == POINT_TYPE) {
+        ui.showWindow(POINT_DETAILS);
+        ui.setWindowLocation(ui.getWindow(POINT_DETAILS), 200, 200);
+
+        selectedOasisPoint = sel.name;
+        const detailsWindow : HTMLDivElement = ui.getWindow(POINT_DETAILS);
+        buildOasisPointDetailsVisualization(selectedOasisPoint, detailsWindow);
     }
-    return view;
+    // console.log("selected entity:", sel);
+}
+
+/**
+ * Creates the Charts showing the historical Energy Oasis Data.
+ * Currently all points show the same data.
+ */
+function buildOasisPointDetailsVisualization(pointName: string, window: HTMLDivElement ) {
+    const titleBar = window.querySelector(".ui_titlebar");
+    if (titleBar) {
+        const titleTextNode = Array.from(titleBar.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+        if (titleTextNode) {
+            titleTextNode.nodeValue = pointName;
+        }
+    }
+
+    // Replace the content in the `ui_window_content`
+    const content = window.querySelector(".ui_window_content");
+    if (content) {
+        // Clear the existing content
+        content.innerHTML = "";
+
+        // Create a canvas for the Chart.js chart
+        const canvas = document.createElement("canvas");
+        canvas.style.height = "400px";
+        canvas.style.width = "1000px";
+        canvas.id = "chartCanvas";
+        content.appendChild(canvas);
+
+        // Initialize Chart.js
+        const ctx = canvas.getContext("2d");
+
+        const chartOptions: ChartOptions = {
+            responsive: true,
+            hover: { mode: "nearest" },
+            plugins: {
+                title: { display: true, text: "Energy Oasis Data Line Chart" },
+                zoom: {
+                    pan: { enabled: true, mode: "x" },
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: "x",
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    type: "time",
+                    time: {
+                        parser: "YYYY-MM-DDTHH:mm:ssZ",
+                        tooltipFormat: "ll HH:mm",
+                        unit: "day",
+                        displayFormats: { day: "MMM D, YYYY" }, // label format
+                    },
+                    title: { display: true, text: "Timestamp" },
+                } as TimeScale,
+                y: {
+                    beginAtZero: false, // Allow Y-axis to start dynamically
+                    suggestedMin: 0, // So that graph starting point is never greater than 0
+                    title: { display: true, text: "Power (kW)" },
+                    ticks: {
+                        callback: (value) => `${value} kW`, // Format Y-axis labels
+                    },
+                    afterDataLimits: (axis) => { // This centers the graph at 0
+                        const maxAbsValue = Math.max(Math.abs(axis.max || 0), Math.abs(axis.min || 0));
+                        axis.min = -maxAbsValue;
+                        axis.max = maxAbsValue;
+                    },
+                } as LinearScale,
+            } as ChartScales,
+        };
+
+        const myChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: oasis_data.timestamp,
+                datasets: OASIS_DATA_TITLES.map((title, index) => ({
+                    label: title,
+                    data: oasis_data.data[title] ?? [],
+                    borderColor: CHART_COLORS[index].rgba,
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHitRadius: 8,
+                }))
+            },
+            options: chartOptions
+        });
+    }
+}
+
+function handleWsMessages(msgType, msg) {
+    // console.log("ws message received by oasis_points.js, type: ", msgType);
+    // console.log(msg);
+    switch (msgType) {
+        case "oasis_data": handleOasisDataSet(msg); break;
+    }
+}
+
+/**
+ * Parses the Oasis Data in a way convenient to use in line chart
+ */
+function handleOasisDataSet(new_oasis_data: OasisDataTypeFromServer[]) {
+    const parsedChartData: OasisLineChartDataType = {
+        timestamp: [],
+        data: Object.fromEntries(OASIS_DATA_TITLES.map((title) => [title, []])) as OasisDataType,
+    };
+
+    new_oasis_data.forEach((row) => {
+        parsedChartData.timestamp.push(row.timestamp);
+        OASIS_DATA_TITLES.forEach((title) => {
+            parsedChartData.data[title].push(row[title]);
+        });
+    });
+
+    oasis_data = parsedChartData;
 }
 
 function initOasisPoints() {
-    const point = [ -122.9994, 49.2497];
-    
-    if (!pointDataSource) {
-        pointDataSource = new Cesium.CustomDataSource("oasisPoints");
-        odinCesium.addDataSource(pointDataSource);
-    }
+    buildOasisPointsDataSource();
 
+    const OASIS_EV_CHARGERS_LONLAT = [-122.9994, 49.2497];
     const pointEntity = new Cesium.Entity({
-        position: Cesium.Cartesian3.fromDegrees(point[0], point[1]),
+        position: Cesium.Cartesian3.fromDegrees(OASIS_EV_CHARGERS_LONLAT[0], OASIS_EV_CHARGERS_LONLAT[1]),
         point: {
             pixelSize: 10,
             color: Cesium.Color.RED,
         },
-        description: "Oasis EV Chargers", // Tooltip text for the point
-        name: "Oasis EV Chargers", // Name of the entity
+        description: "Energy Oasis EV Chargers", // Tooltip text for the point
+        name: "Energy Oasis EV Chargers", // Name of the entity
         _type: POINT_TYPE,
         label: {
-            text: "Oasis Point",
+            text: "Energy Oasis EV Chargers",
             font: config.font,
             fillColor: config.outlineColor,
             showBackground: true,
@@ -292,18 +305,19 @@ function initOasisPoints() {
             )
         }
     } as any);
-    const point2 = [-122.9985, 49.2493];
+
+    const OASIS_BATTERIES_LONLAT = [-122.9985, 49.2493];
     const pointEntity2  = new Cesium.Entity({
-        position: Cesium.Cartesian3.fromDegrees(point2[0], point2[1]),
+        position: Cesium.Cartesian3.fromDegrees(OASIS_BATTERIES_LONLAT[0], OASIS_BATTERIES_LONLAT[1]),
         point: {
             pixelSize: 10,
             color: Cesium.Color.RED,
         },
-        description: "Oasis Point Example", // Tooltip text for the point
-        name: "Oasis Point", // Name of the entity
+        description: "Energy Oasis Batteries", // Tooltip text for the point
+        name:  "Energy Oasis Batteries", // Name of the entity
         _type: POINT_TYPE,
         label: {
-            text: "Oasis Battery Bank",
+            text: "Energy Oasis Batteries",
             font: config.font,
             fillColor: config.outlineColor,
             showBackground: true,
@@ -319,10 +333,56 @@ function initOasisPoints() {
         }
     } as any);
 
-    // Add the point entity to the data source
-    pointDataSource.entities.add(pointEntity);
-    pointDataSource.entities.add(pointEntity2);
+    oasisPointsDataSource.entities.add(pointEntity);
+    oasisPointsDataSource.entities.add(pointEntity2);
 
-    // Request a render update (if necessary)
     odinCesium.requestRender();
+}
+
+function buildOasisPointsDataSource() {
+    if (!oasisPointsDataSource) {
+        oasisPointsDataSource = new Cesium.CustomDataSource("oasisPoints");
+        
+        // Adjust the clustering if more points are added we want this to be all or nothing
+        oasisPointsDataSource.clustering.enabled = true;
+        oasisPointsDataSource.clustering.pixelRange = 8; 
+        oasisPointsDataSource.clustering.minimumClusterSize = 2;
+        
+        oasisPointsDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
+            cluster.label.show = true;
+            cluster.label.text = ENERGY_OASIS_NAME;
+            cluster.label.pixelOffset = new Cesium.Cartesian2(8, 5);
+            cluster.label.scaleByDistance = new Cesium.NearFarScalar(
+                500.0, 1.0,
+                20000.0, 0.4
+            );
+            cluster.billboard.show = false;
+            cluster.point.show = true;
+            cluster.point.pixelSize = 15;
+            cluster.point.color = Cesium.Color.YELLOW;
+            cluster.point.scaleByDistance = new Cesium.NearFarScalar(
+                500.0, 1.0,
+                20000.0, 0.4
+            );
+
+            const clusterId = {
+                isCluster: true,
+                clusteredEntities: clusteredEntities,
+                label: cluster.label.text,
+            }
+
+            cluster.point.id = clusterId;
+            cluster.label.id = clusterId;
+        });
+
+        // Normal Entity selection not working for clusters adding a custom select handler it check if this cluster was clicked
+        odinCesium.setEntitySelectionHandler((click) => {
+            const pickedObject = odinCesium.viewer.scene.pick(click.position);
+            if (Cesium.defined(pickedObject) && pickedObject.id && pickedObject.id.label == ENERGY_OASIS_NAME) {
+                odinCesium.zoomTo(BCIT_OASIS_CAMERA_POSITION);
+            }
+        });
+
+        odinCesium.addDataSource(oasisPointsDataSource);
+    }
 }
