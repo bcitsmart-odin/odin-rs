@@ -2,7 +2,7 @@
 name = "bcit_smart"
 version = "0.1.0"
 edition = "2021"
-build = "../build_resources.rs"
+build = "./build_resources.rs"
 
 [dependencies]
 # our ODIN crates

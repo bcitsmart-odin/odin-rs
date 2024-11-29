@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./assets",
+    "module": "ESNext",
+    "target": "ESNext",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "sourceMap": false,
+    "baseUrl": ".",
+    // "rootDir": "./typescript",
+  },
+  "include": [
+    "./typescript/**/*.ts"
+  ],
+  "exclude": ["node_modules", "assets"],
+}

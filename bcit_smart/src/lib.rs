@@ -18,6 +18,9 @@ pub use live_importer::*;
 pub mod oasis_actor;
 pub use oasis_actor::*;
 
+pub mod oasis_web;
+pub use oasis_web::*;
+
 use tracing::Level;
 use tracing_subscriber::fmt::format;
 use tracing_subscriber::EnvFilter;

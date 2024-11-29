@@ -15,6 +15,7 @@ pub use bcit_smart::actor::*;
 pub use bcit_smart::live_importer::*;
 
 pub use bcit_smart::oasis_actor::*;
+pub use bcit_smart::oasis_web::*;
 
 use tracing::Level;
 
@@ -59,6 +60,14 @@ async fn main ()->anyhow::Result<()> {
     // we want to hold the handle and not the actor itself but maybe the info can be included in the Actor?
     let powerline_source = PowerLineSource::new( powerline_info, preactor_handle_powerline.to_actor_handle() );
 
+     //--- (1b) set up Oasis data source handle
+    // Have to create a preactor handle to the Oasis actor so that it can be handed Spa Actor before it is created.
+    let preactor_handle_oasis = PreActorHandle::new ( &actor_system, "oasis", 8);
+
+    // Unneeded info ATM, leaving for future extensibility
+    let oasis_info = OasisInfo { line_id: 1, name: "Oasis".into(), description: "Oasis description".into(), show: true };
+    let oasis_web_service = OasisService::new( oasis_info, preactor_handle_oasis.to_actor_handle() );
+
     //--- (2) spawn the server actor
     let hserver = spawn_actor!( actor_system, "server", SpaServer::new(
         odin_server::load_config("spa_server.ron")?,
@@ -67,6 +76,7 @@ async fn main ()->anyhow::Result<()> {
         // Create a service here
             .add( build_service!( TestImageService{} )).await // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
             .add( build_service!( PowerLineService::new(vec![powerline_source])) ).await
+            .add( build_service!( oasis_web_service ) ).await
     ))?;
 
     //--- (3) spawn the data source actors we did set up in (1) 
@@ -79,7 +89,7 @@ async fn main ()->anyhow::Result<()> {
         max_age: hours(3) 
     };
 
-    let _hoasis_actor = spawn_actor!( actor_system, "oasis", OasisActor::new(
+    let _hoasis_actor = spawn_pre_actor!( actor_system, preactor_handle_oasis, OasisActor::new(
         dataref_action!( hserver.clone(): ActorHandle<SpaServerMsg> => |_store:&OasisDataSet| {
             println!("OASIS! This should be executed by the init action");
             Ok( hserver.try_send_msg( DataAvailable{ sender_id: "oasis", data_type: type_name::<OasisDataSet>()} )? )

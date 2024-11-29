@@ -143,7 +143,6 @@ define_actor_msg_set! { pub OasisImportActorMsg =  InitializeOasis | UpdateOasis
 #[derive(Debug)]
 pub struct OasisActor<I, U> 
     where 
-        // IMP: PowerLineDataImporter + Send, // Currently not using an importer just preloading all info into memeory on init.
         U: DataAction<OasisDataSet>,
         I: DataRefAction<OasisDataSet>
 {
@@ -210,11 +209,7 @@ impl_actor! { match msg for Actor<OasisActor<I, U>, OasisImportActorMsg>
     }
 
     UpdateOasis => cont! { let _ = self.update(msg.0).await; }
-
-    // ImportError => cont! { error!("{:?}", msg.0); } // think about errors later
     
-    _Terminate_ => stop! { 
-      println!("Terminate on Oasis Actor");
-        // self.powerline_importer.terminate();   // When we setup an import struct we may have to stop it safely
-    }
+    // Add into code to terminate any actors that need to safely shutdown here
+    _Terminate_ => stop! { }
 }

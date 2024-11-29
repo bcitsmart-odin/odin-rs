@@ -8,3 +8,5 @@ local/
 rustc-ice*.txt
 odin_book/external/
 
+node_modules/
+package-lock.json
