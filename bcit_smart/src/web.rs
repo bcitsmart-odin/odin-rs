@@ -75,27 +75,21 @@ impl SpaService for PowerLineService {
         data_type: &str
     ) -> OdinServerResult<bool> {
         let mut is_our_data = false;
-
-        println!("data available function");
-
         let hupdater = &self.powerlines[0].hupdater;
 
         if (*hupdater.id == sender_id) {
-            println!("BCIT SMART service got a data available message from {}, of type: {}, with connections: {}", sender_id, data_type, has_connections.to_string());
+            debug!("BCIT SMART service got a data available message from {}, of type: {}, with connections: {}", sender_id, data_type, has_connections.to_string());
             if data_type == type_name::<Vec<PowerLineSet>>() {
-                println!("Going to send a snapshot action");
                 if has_connections {
                     let action = dyn_dataref_action!( let hself: ActorHandle<SpaServerMsg> = hself.clone() => |store: &Vec<PowerLineSet>| {
-                        println!("Action send to snapshotAction being run");
                         for powerlines in store {
                             let data = ws_msg!( "bcit_smart/bcit_smart.js", powerlines).to_json()?;
-                            println!("Data to be sent\n {}", data);
+                            debug!("Data to be sent to all clients: {}", data);
                             hself.try_send_msg( BroadcastWsMsg{data})?;
                         }
                         Ok(())
                     });
                     hupdater.send_msg( ExecSnapshotAction(action)).await?;
-                    println!("Going to try to send message to the ws");
                 }
                 is_our_data = true;
             }
@@ -106,7 +100,7 @@ impl SpaService for PowerLineService {
 
     async fn init_connection (&mut self, hself: &ActorHandle<SpaServerMsg>, is_data_available: bool, conn: &mut SpaConnection) -> OdinServerResult<()> {
         // let satellites: Vec<&GoesrSatelliteInfo> = self.satellites.iter().map( |s| &s.info).collect();
-        println!("Init Connection for the power line service");
+        debug!("Init Connection for the power line service");
         let initial_message = "This is the powerline service initializing a connection";
         let msg = ws_msg!( "bcit_smart/bcit_smart.js", initial_message).to_json()?;
         conn.send(msg).await?;

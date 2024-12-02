@@ -69,26 +69,20 @@ impl SpaService for OasisService {
         data_type: &str
     ) -> OdinServerResult<bool> {
         let mut is_our_data = false;
-
-        println!("Oasis SPA Service data available function");
-
         let hupdater = &self.hupdater;
 
         if (*hupdater.id == sender_id) {
-            println!("Oasis service got a data available message from {}, of type: {}, with connections: {}", sender_id, data_type, has_connections.to_string());
+            debug!("Oasis service got a data available message from {}, of type: {}, with connections: {}", sender_id, data_type, has_connections.to_string());
             if data_type == type_name::<OasisDataSet>() {
-                println!("Going to send a snapshot action");
                 if has_connections {
                     let action = dyn_dataref_action!( let hself: ActorHandle<SpaServerMsg> = hself.clone() => |store: &OasisDataSet| {
-                        println!("Action send to snapshotAction being run");
                         let oasis_data = &store.data_rows;
                         let data = ws_msg!( "bcit_smart/oasis_points.js", oasis_data).to_json()?;
-                        println!("Data to be sent\n {}", data);
+                        debug!("Data available to be sent to all clients: {}", data);
                         hself.try_send_msg( BroadcastWsMsg{data})?;
                         Ok(())
                     });
                     hupdater.send_msg( ExecSnapshotActionOasis(action)).await?;
-                    println!("Going to try to send message to the ws");
                 }
                 is_our_data = true;
             }
@@ -112,7 +106,7 @@ impl SpaService for OasisService {
                 let remote_addr: SocketAddr = remote_addr  => |store: &OasisDataSet| {
                     let oasis_data = &store.data_rows;
                     let data = ws_msg!( "bcit_smart/oasis_points.js", oasis_data).to_json()?;
-                    println!("Init Connection data to be sent\n {}", data);
+                    debug!("Init Connection data to be sent to all clients: {}", data);
                     hself.try_send_msg( BroadcastWsMsg{data})?;
                     Ok(())
             });

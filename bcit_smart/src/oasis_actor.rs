@@ -62,12 +62,11 @@ impl OasisDataSet {
     }
 
     pub fn from_csv(asset_file_name: &str, is_excel_export: bool) -> Result<OasisDataSet> {
-        println!("Starting from CSV");
         let data = load_asset(asset_file_name).expect(&format!("Didn't open file, {}", asset_file_name));
         let decompressed_data = decompress_vec(&data).expect(&format!("Didn't decompress file, {}", asset_file_name));
         let mut csv_content = String::from_utf8(decompressed_data)?;
         // println!("Raw decompressed data: {:?}", String::from_utf8_lossy(&decompressed_data[..1000]));
-        println!("csv content: {}", &csv_content[..1000]);
+        debug!("csv content pre cleanup: {}", &csv_content[..1000]);
 
         // This file came from excel and needs to be cleaned up before it can work
         // Need to remove the = prefix on lines and possibly the quotes
@@ -84,7 +83,7 @@ impl OasisDataSet {
                 .collect::<Vec<_>>()
                 .join("\n");
         }
-        println!("csv content: {}", &csv_content[..1000]);
+        debug!("csv content post cleanup: {}", &csv_content[..1000]);
 
         let mut rdr = ReaderBuilder::new()
             .has_headers(true)
@@ -163,16 +162,16 @@ impl <I, U> OasisActor<I, U>
     }
 
     pub async fn init (&mut self, init_dataset: OasisDataSet) -> Result<()> {
-        println!("Init function of OasisActor");
+        debug!("Init function of OasisActor");
         self.data_store = init_dataset.clone(); // should think about this more we already have an empty array at start
-        println!("{:?}", &init_dataset.data_rows[..10]);
+        debug!("Oasis Init dataset: {:?}", &init_dataset.data_rows[..10]);
         // TODO should there be handling for a failed init execute?
         let _ = self.init_action.execute(&self.data_store).await;
         Ok(())
     }
 
     pub async fn update (&mut self, new_dataset: OasisDataSet) -> Result<()> {
-        println!("update on OasisActor");
+        debug!("update on OasisActor");
         //TODO  We don't want to clone this, refactor later
         self.data_store = new_dataset.clone();
         // TODO should there be handling for a failed update execute?
@@ -187,12 +186,10 @@ impl_actor! { match msg for Actor<OasisActor<I, U>, OasisImportActorMsg>
         I: DataRefAction<OasisDataSet> + Sync
     as
     _Start_ => cont! { 
-        // We should be starting the actor responsible for getting PowerLine info here that will
-        // then start sending this actor updates when it has data.
-        println!("Start on OasisActor");
+        // Just loading in static data for now, should be replaced with a data importer if
+        // we expect the data to ever change.
         let hself = self.hself.clone();
-        // self.data_store = OasisDataSet::from_csv("OASIS_Power_Data.csv", true);
-        let starting_data = OasisDataSet::from_csv("OASIS_Power_Data.csv", true).expect("Couldn't get data");
+        let starting_data = OasisDataSet::from_csv("OASIS_Power_Data.csv", true).expect("Error getting the Oasis data from the CSV");
         println!("Got the csv data in Oasis Start");
         let _ = hself.send_msg( InitializeOasis( starting_data )).await;
     }

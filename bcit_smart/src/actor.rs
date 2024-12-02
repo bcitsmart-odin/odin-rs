@@ -117,16 +117,16 @@ impl <IMP, U, I> PowerLineActor<IMP, U, I>
     }
 
     pub async fn init (&mut self, init_powerlines: Vec<PowerLineSet>) -> Result<()> {
-        println!("Init function of PowerLineActor");
+        debug!("Init function of PowerLineActor");
         self.powerline_store = init_powerlines.clone(); // should think about this more we already have an empty array at start
-        println!("{:?}", init_powerlines);
+        debug!("initial powerline data: {:?}", init_powerlines);
         // TODO should there be handling for a failed init execute?
         let _ = self.init_action.execute(&self.powerline_store).await;
         Ok(())
     }
 
     pub async fn update (&mut self, new_powerlines: PowerLineSet) -> Result<()> {
-        println!("update on PowerLineActor");
+        debug!("update on PowerLineActor");
         self.powerline_store.push(new_powerlines.clone());
         // TODO should there be handling for a failed update execute?
         let _ = self.update_action.execute(new_powerlines).await;
@@ -143,19 +143,19 @@ impl_actor! { match msg for Actor< PowerLineActor<IMP, U, I>, PowerLineImportAct
     _Start_ => cont! { 
         // We should be starting the actor responsible for getting PowerLine info here that will
         // then start sending this actor updates when it has data.
-        println!("Start on PowerLineActor");
+        debug!("Start on PowerLineActor");
         let hself = self.hself.clone();
         // TODO consider what to do if start fails or if it can fail
         let _ = self.powerline_importer.start(hself).await;
     }
 
     ExecSnapshotAction => cont! { 
-        println!("Exec SnapShoot Action");
+        debug!("Exec SnapShoot Action");
         let _ = msg.0.execute( &self.powerline_store).await; 
     } // Ignoring this for now
 
     Initialize => cont! { 
-        println!("Initialize on powerlineactor");
+        debug!("Initialize on powerlineactor");
         // should anything happen is <Err> comes back from init? 
         let _ = self.init(msg.0).await; 
     }

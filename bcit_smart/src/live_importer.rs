@@ -95,7 +95,7 @@ impl PowerLineDataImporter for LivePowerLineImporter {
 
 // TODO think about if we should caching results
 async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, config: LivePowerLineImporterConfig, _cache_dir: Arc<PathBuf>)->Result<()> {
-    println!("running data acquisition");
+    debug!("running data acquisition");
     let source = Arc::new(config.source); // no need to keep gazillions of copies
     let _pow_id = config.pow_id; // can get different config info if needed
 
@@ -103,7 +103,7 @@ async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, conf
     // Need to think more about this start point and how to update from it minimally
     let data = read_powerline_data_from_asset_file(&source).await?;
 
-    println!("Data read from file {:?}", data);
+    debug!("Data read from file {:?}", data);
 
     // Going to transfom data to shape Initialize wants should think about fixing this so only 1 type later
     let powerlines = convert_file_data_to_powerline_struct(data);
@@ -125,7 +125,7 @@ async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, conf
         let num_to_drop = rng.gen_range(0..=3);
         powerlines.shuffle(&mut rng);
 
-        // Drop the specified number of items by truncating the Vec
+        // Creating a random set to see what data changing over time looks like
         let final_powerlines = powerlines.into_iter().skip(num_to_drop).collect();
 
         let powerlines_set = PowerLineSet::new(final_powerlines);
@@ -137,14 +137,14 @@ async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, conf
 }
 
 async fn read_powerline_data_from_asset_file(file_source: &str) -> Result<Vec<PowerLineDataPoint>> {
-    println!("File Path to open: {}", file_source);
+    debug!("File Path to open: {}", file_source);
 
     let data = load_asset(file_source).expect(&format!("Didn't open file, {}", file_source));
-    println!("found file");
+    debug!("found asset file: {:?}", file_source);
 
     let decompressed_data = decompress_vec(&data).unwrap();
 
-    println!("Decompressed content: {:?}", decompressed_data);
+    debug!("Decompressed file content: {:?}", decompressed_data);
 
     let data: Vec<PowerLineDataPoint> = serde_json::from_slice(&decompressed_data)?;
     return Ok(data)
