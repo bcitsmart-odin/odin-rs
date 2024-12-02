@@ -19,8 +19,8 @@ pub struct TestImageService {}
 #[async_trait::async_trait]
 impl SpaService for TestImageService {
 
-    async fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
-        spa_builder.add( build_service!( UiService::new())).await
+    fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
+        spa_builder.add( build_service!( UiService::new()))
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()> {
@@ -50,8 +50,8 @@ run_actor_system!( actor_system => {
         "live",
         SpaServiceList::new()
         // Create a service here
-            .add( build_service!( TestImageService{} )).await // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
-            .add( build_service!( PowerLineService::new(vec![powerline_source])) ).await
+            .add( build_service!( TestImageService{} )) // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
+            .add( build_service!( PowerLineService::new(vec![powerline_source])) )
     ))?;
 
     //--- (3) spawn the data source actors we did set up in (1) 
@@ -78,11 +78,11 @@ fn spawn_powerline_updater (
     spawn_pre_actor!( actor_system, pre_handle,  PowerLineActor::new(
         // actor::load_config( "powerline.ron")?, // No config for now if it is added can go here 
         LivePowerLineImporter::new(config), // This would be a struct that handles getting powerline data
-        dataref_action!( hserver.clone(): ActorHandle<SpaServerMsg>, name: &'static str => |_store:&Vec<PowerLineSet>| {
+        dataref_action!( let hserver: ActorHandle<SpaServerMsg> = hserver.clone(), let name: &'static str = name => |_store:&Vec<PowerLineSet>| {
             println!("This should be executed by the init action");
             Ok( hserver.try_send_msg( DataAvailable{ sender_id: name, data_type: type_name::<Vec<PowerLineSet>>()} )? )
         }),
-        data_action!( hserver.clone(): ActorHandle<SpaServerMsg> => |powerlines:PowerLineSet| {
+        data_action!( let hserver: ActorHandle<SpaServerMsg> = hserver.clone() => |powerlines:PowerLineSet| {
             let data = ws_msg!("bcit_smart/bcit_smart.js",powerlines).to_json()?;
             Ok( hserver.try_send_msg( BroadcastWsMsg{data})? )
         }),

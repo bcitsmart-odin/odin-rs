@@ -14,7 +14,6 @@ use serde::{Serialize,Deserialize};
 use odin_build::prelude::*;
 use odin_actor::prelude::*;
 use odin_server::prelude::*;
-use odin_server::spa::WebSocketMessage;
 use odin_cesium::ImgLayerService;
 
 use crate::{load_asset, load_config};
@@ -55,9 +54,9 @@ impl PowerLineService {
 
 #[async_trait]
 impl SpaService for PowerLineService {
-    async fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
+    fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
         spa_builder
-            .add( build_service!( ImgLayerService::new())).await
+            .add( build_service!( ImgLayerService::new()))
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()>  {
@@ -86,7 +85,7 @@ impl SpaService for PowerLineService {
             if data_type == type_name::<Vec<PowerLineSet>>() {
                 println!("Going to send a snapshot action");
                 if has_connections {
-                    let action = dyn_dataref_action!( hself.clone(): ActorHandle<SpaServerMsg> => |store: &Vec<PowerLineSet>| {
+                    let action = dyn_dataref_action!( let hself: ActorHandle<SpaServerMsg> = hself.clone() => |store: &Vec<PowerLineSet>| {
                         println!("Action send to snapshotAction being run");
                         for powerlines in store {
                             let data = ws_msg!( "bcit_smart/bcit_smart.js", powerlines).to_json()?;
@@ -116,32 +115,34 @@ impl SpaService for PowerLineService {
             let remote_addr = conn.remote_addr;
             let hupdater = &self.powerlines[0].hupdater;
 
-            let action = dyn_dataref_action!( hself.clone(): ActorHandle<SpaServerMsg>, remote_addr: SocketAddr  => |store: &Vec<PowerLineSet>| {
-                for powerlines in store {
-                    let remote_addr = remote_addr.clone();
-                    let data = ws_msg!( "bcit_smart/bcit_smart.js", powerlines).to_json()?;
-                    hself.try_send_msg( SendWsMsg{remote_addr, data})?;
-                }
-                Ok(())
-            });
+            let action = dyn_dataref_action!{ 
+                let hself: ActorHandle<SpaServerMsg> = hself.clone(),
+                let remote_addr: SocketAddr = remote_addr => 
+                    |store: &Vec<PowerLineSet>| {
+                        for powerlines in store {
+                            let remote_addr = remote_addr.clone();
+                            let data = ws_msg!( "bcit_smart/bcit_smart.js", powerlines).to_json()?;
+                            hself.try_send_msg( SendWsMsg{remote_addr, data})?;
+                        }
+                    Ok(())
+            }};
             hupdater.send_msg( ExecSnapshotAction(action)).await?;
         }
 
         Ok(())
     }
 
-    async fn handle_incoming_ws_msg (&mut self, msg: String) -> OdinServerResult<()> {
-        println!("Handling incoming ws msg, {}", msg);
-        match serde_json::from_str::<WebSocketMessage>(&msg) {
-            Ok(parsed_msg) => {
-                let target_module = parsed_msg.module;
-                let payload = parsed_msg.payload;
+    async fn handle_ws_msg (&mut self, 
+        hself: &ActorHandle<SpaServerMsg>, remote_addr: &SocketAddr, ws_msg_parts: &WsMsgParts
+    ) -> OdinServerResult<WsMsgReaction> {
+        debug!("Handling WS message for bcitsmart/web: {:?}", ws_msg_parts.ws_msg);
 
-                println!("target module: {}", target_module);
-                println!("payload: {}", payload);
-            }
-            Err(e) => println!("Failed to parse WebSocket message: {:?}", e),
-        }
-        Ok(())
+        // Send a message to the PowerLine actor
+        let hupdater = &self.powerlines[0].hupdater;
+
+
+        let response_message = "BCIT_SMART web actor recieved WS message";
+        let response = ws_msg!( "bcit_smart/bcit_smart.js", response_message).to_json()?;
+        Ok( WsMsgReaction::Broadcast(response) )
     }
 }

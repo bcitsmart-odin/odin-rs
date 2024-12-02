@@ -14,7 +14,6 @@ use serde::{Serialize,Deserialize};
 use odin_build::prelude::*;
 use odin_actor::prelude::*;
 use odin_server::prelude::*;
-use odin_server::spa::WebSocketMessage;
 use odin_cesium::ImgLayerService;
 
 use crate::{load_asset, load_config};
@@ -44,9 +43,9 @@ impl OasisService {
 
 #[async_trait]
 impl SpaService for OasisService {
-    async fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
+    fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
         spa_builder
-            .add( build_service!( ImgLayerService::new())).await
+            .add( build_service!( ImgLayerService::new()))
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()>  {
@@ -80,7 +79,7 @@ impl SpaService for OasisService {
             if data_type == type_name::<OasisDataSet>() {
                 println!("Going to send a snapshot action");
                 if has_connections {
-                    let action = dyn_dataref_action!( hself.clone(): ActorHandle<SpaServerMsg> => |store: &OasisDataSet| {
+                    let action = dyn_dataref_action!( let hself: ActorHandle<SpaServerMsg> = hself.clone() => |store: &OasisDataSet| {
                         println!("Action send to snapshotAction being run");
                         let oasis_data = &store.data_rows;
                         let data = ws_msg!( "bcit_smart/oasis_points.js", oasis_data).to_json()?;
@@ -108,12 +107,14 @@ impl SpaService for OasisService {
             let remote_addr = conn.remote_addr;
             let hupdater = &self.hupdater;
 
-            let action = dyn_dataref_action!( hself.clone(): ActorHandle<SpaServerMsg>, remote_addr: SocketAddr  => |store: &OasisDataSet| {
-                let oasis_data = &store.data_rows;
-                let data = ws_msg!( "bcit_smart/oasis_points.js", oasis_data).to_json()?;
-                println!("Init Connection data to be sent\n {}", data);
-                hself.try_send_msg( BroadcastWsMsg{data})?;
-                Ok(())
+            let action = dyn_dataref_action!(
+                let hself: ActorHandle<SpaServerMsg> = hself.clone(),
+                let remote_addr: SocketAddr = remote_addr  => |store: &OasisDataSet| {
+                    let oasis_data = &store.data_rows;
+                    let data = ws_msg!( "bcit_smart/oasis_points.js", oasis_data).to_json()?;
+                    println!("Init Connection data to be sent\n {}", data);
+                    hself.try_send_msg( BroadcastWsMsg{data})?;
+                    Ok(())
             });
             hupdater.send_msg( ExecSnapshotActionOasis(action)).await?;
         }
@@ -121,18 +122,14 @@ impl SpaService for OasisService {
         Ok(())
     }
 
-    async fn handle_incoming_ws_msg (&mut self, msg: String) -> OdinServerResult<()> {
-        println!("Handling incoming ws msg, {}", msg);
-        match serde_json::from_str::<WebSocketMessage>(&msg) {
-            Ok(parsed_msg) => {
-                let target_module = parsed_msg.module;
-                let payload = parsed_msg.payload;
+    async fn handle_ws_msg (&mut self, 
+        hself: &ActorHandle<SpaServerMsg>, remote_addr: &SocketAddr, ws_msg_parts: &WsMsgParts
+    ) -> OdinServerResult<WsMsgReaction> {
+        debug!("Oasis Web Actor received WS msg: {:?}", ws_msg_parts.ws_msg);
+        let hupdater = &self.hupdater;
 
-                println!("Oasis target module: {}", target_module);
-                println!("Oasis payload: {}", payload);
-            }
-            Err(e) => println!("Failed to parse WebSocket message: {:?}", e),
-        }
-        Ok(())
+        let response_message = "OASIS_WEB actor recieved WS message";
+        let response = ws_msg!( "bcit_smart/oasis_points.js", response_message).to_json()?;
+        Ok( WsMsgReaction::Broadcast(response) )
     }
 }

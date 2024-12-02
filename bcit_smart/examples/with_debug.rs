@@ -27,8 +27,8 @@ pub struct TestImageService {}
 #[async_trait::async_trait]
 impl SpaService for TestImageService {
 
-    async fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
-        spa_builder.add( build_service!( UiService::new())).await
+    fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
+        spa_builder.add( build_service!( UiService::new()))
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()> {
@@ -46,7 +46,7 @@ async fn main ()->anyhow::Result<()> {
     actor_system.request_termination_on_ctrlc();
 
     // Customized debug messages because some of them were pages long when sending larger messages
-    // bcit_smart::create_customized_tracing_subscriber(None);
+    // bcit_smart::create_customized_tracing_subscriber(None); // use this one if you want to use the RUST_LOG env variable
     bcit_smart::create_customized_tracing_subscriber(Some(Level::DEBUG));
 
     //--- (1) set up PowerLines data source handle
@@ -74,9 +74,9 @@ async fn main ()->anyhow::Result<()> {
         "live",
         SpaServiceList::new()
         // Create a service here
-            .add( build_service!( TestImageService{} )).await // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
-            .add( build_service!( PowerLineService::new(vec![powerline_source])) ).await
-            .add( build_service!( oasis_web_service ) ).await
+            .add( build_service!( TestImageService{} )) // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
+            .add( build_service!( PowerLineService::new(vec![powerline_source])) )
+            .add( build_service!( oasis_web_service ) )
     ))?;
 
     //--- (3) spawn the data source actors we did set up in (1) 
@@ -90,11 +90,11 @@ async fn main ()->anyhow::Result<()> {
     };
 
     let _hoasis_actor = spawn_pre_actor!( actor_system, preactor_handle_oasis, OasisActor::new(
-        dataref_action!( hserver.clone(): ActorHandle<SpaServerMsg> => |_store:&OasisDataSet| {
+        dataref_action!( let hserver: ActorHandle<SpaServerMsg> = hserver.clone() => |_store:&OasisDataSet| {
             println!("OASIS! This should be executed by the init action");
             Ok( hserver.try_send_msg( DataAvailable{ sender_id: "oasis", data_type: type_name::<OasisDataSet>()} )? )
         }),
-        data_action!( hserver.clone(): ActorHandle<SpaServerMsg> => |oasis_data:OasisDataSet| {
+        data_action!( let hserver: ActorHandle<SpaServerMsg> = hserver.clone() => |oasis_data:OasisDataSet| {
             println!("OASIS! This should be executed by the update action");
             let data = ws_msg!("bcit_smart/bcit_smart.js",oasis_data).to_json()?;
             Ok( hserver.try_send_msg( BroadcastWsMsg{data})? )
@@ -119,11 +119,11 @@ fn spawn_powerline_updater (
     spawn_pre_actor!( actor_system, pre_handle,  PowerLineActor::new(
         // actor::load_config( "powerline.ron")?, // No config for now if it is added can go here 
         LivePowerLineImporter::new(config), // This would be a struct that handles getting powerline data
-        dataref_action!( hserver.clone(): ActorHandle<SpaServerMsg>, name: &'static str => |_store:&Vec<PowerLineSet>| {
+        dataref_action!( let hserver: ActorHandle<SpaServerMsg> = hserver.clone(), let name: &'static str = name => |_store:&Vec<PowerLineSet>| {
             println!("This should be executed by the init action");
             Ok( hserver.try_send_msg( DataAvailable{ sender_id: name, data_type: type_name::<Vec<PowerLineSet>>()} )? )
         }),
-        data_action!( hserver.clone(): ActorHandle<SpaServerMsg> => |powerlines:PowerLineSet| {
+        data_action!( let hserver: ActorHandle<SpaServerMsg> = hserver.clone() => |powerlines:PowerLineSet| {
             let data = ws_msg!("bcit_smart/bcit_smart.js",powerlines).to_json()?;
             Ok( hserver.try_send_msg( BroadcastWsMsg{data})? )
         }),
