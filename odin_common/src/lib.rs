@@ -52,3 +52,6 @@ odin_build::define_load_config!();
 #[inline] pub fn atanh(x:f64) -> f64 { x.atanh() }
 #[inline] pub fn sqrt(x:f64) -> f64 { x.sqrt() }
 #[inline] pub fn pow2(x:f64) -> f64 { x*x }
+
+// a global fn that can be used with serde(skip_serializing_if="odin_common::is_none")
+#[inline] pub fn is_none<T> (opt: &Option<T>)->bool { opt.is_none() }

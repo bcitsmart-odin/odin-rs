@@ -33,8 +33,10 @@ use odin_common::{strings, fs, net, if_let};
 pub mod prelude;
 pub mod spa;
 pub mod ui_service;
+
 pub mod ws_service;
-// pub mod share_service;  // this does not seem to exist
+pub use ws_service::{WsMsg,WsMsgParts};
+
 
 pub mod errors;
 use errors::{OdinServerResult,op_failed};

@@ -12,23 +12,20 @@
  * and limitations under the License.
  */
 
-use odin_server::prelude::*;
+ use thiserror::Error;
+ use globset;
+ use serde_json;
 
-define_ws_payload!{ pub Sentinel = 
-    pub device_id: String
-}
+ pub type Result<T> = std::result::Result<T, OdinShareError>;
+ 
+ #[derive(Error,Debug)]
+ pub enum OdinShareError {
+    #[error("Glob error {0}")]
+    GlobError( #[from] globset::Error),
 
+    #[error("I/O error {0}")]
+    IOError( #[from] std::io::Error),
 
-
-#[test]
-fn test_ws_msg()->OdinServerResult<()> {
-    let s1 = Sentinel{device_id: "one".into()};
-    let s2 = Sentinel{device_id: "two".into()};
-    let v = vec![&s1,&s2];
-    
-    let sentinels = &v;
-    let json = WsMsg::json("odin_sentinel/sentinel_service", "sentinels", sentinels)?;
-    println!("{json}");
-
-    Ok(())
-}
+    #[error("JSON error {0}")]
+    JsonError( #[from] serde_json::Error),
+ }
