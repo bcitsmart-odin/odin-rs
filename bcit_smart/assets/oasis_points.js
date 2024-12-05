@@ -16,7 +16,7 @@ const POINT_TYPE = "oasisPoint";
 const OASIS_SETTINGS = "oasisSettings";
 const POINT_DETAILS = "oasisPointDetails";
 const ENERGY_OASIS_NAME = "BCIT's Energy Oasis";
-const BCIT_OASIS_CAMERA_POSITION = Cesium.Cartesian3.fromDegrees(-123.0032, 49.2504, 1725);
+const BCIT_OASIS_CAMERA_POSITION = Cesium.Cartesian3.fromDegrees(-122.9996, 49.2494, 610);
 const OASIS_DATA_TITLES = [
     "BESS.DC Power",
     "Battery Group 1.DC Power",
@@ -27,6 +27,13 @@ const OASIS_DATA_TITLES = [
     // "L2 7650 Meter.Active Power", // No data so skipping this one
     "OASIS POI.Active Power",
     "PV.DC Power",
+];
+// I should rethink this charts field so it is not so fragily tied to the OASIS_DATA_TITLES order/length
+const OASIS_POINTS_CONFIG = [
+    { name: "Energy Oasis EV Chargers", lonlat: [-122.999400, 49.249700], charts: [7] },
+    { name: "Energy Oasis BESS", lonlat: [-122.998640, 49.249430], charts: [0, 1, 2, 3, 4] },
+    { name: "Energy Oasis Inverter", lonlat: [-122.998470, 49.249430], charts: [5] },
+    { name: "Energy Oasis Substation K", lonlat: [-123.000600, 49.248900], charts: [6] },
 ];
 const CHART_COLORS = [
     { label: "Red", rgba: "rgba(255, 99, 132, 1)" },
@@ -167,11 +174,12 @@ function buildOasisPointDetailsVisualization(pointName, window) {
                 },
             },
         };
+        const visibleCharts = OASIS_POINTS_CONFIG.find((point) => point.name === pointName)?.charts ?? [];
         const myChart = new Chart(ctx, {
             type: "line",
             data: {
                 labels: oasis_data.timestamp,
-                datasets: OASIS_DATA_TITLES.map((title, index) => ({
+                datasets: OASIS_DATA_TITLES.filter((title, index) => visibleCharts.includes(index)).map((title, index) => ({
                     label: title,
                     data: oasis_data.data[title] ?? [],
                     borderColor: CHART_COLORS[index].rgba,
@@ -212,58 +220,33 @@ function handleOasisDataSet(new_oasis_data) {
 }
 function initOasisPoints() {
     buildOasisPointsDataSource();
-    const OASIS_EV_CHARGERS_LONLAT = [-122.9994, 49.2497];
-    const pointEntity = new Cesium.Entity({
-        position: Cesium.Cartesian3.fromDegrees(OASIS_EV_CHARGERS_LONLAT[0], OASIS_EV_CHARGERS_LONLAT[1]),
-        point: {
-            pixelSize: 10,
-            color: Cesium.Color.RED,
-        },
-        description: "Energy Oasis EV Chargers", // Tooltip text for the point
-        name: "Energy Oasis EV Chargers", // Name of the entity
-        _type: POINT_TYPE,
-        label: {
-            text: "Energy Oasis EV Chargers",
-            font: config.font,
-            fillColor: config.outlineColor,
-            showBackground: true,
-            backgroundColor: config.labelBackground,
-            //heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-            horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
-            verticalOrigin: Cesium.VerticalOrigin.TOP,
-            pixelOffset: new Cesium.Cartesian2(5, 5),
-            scaleByDistance: new Cesium.NearFarScalar(500.0, 1.0, // Full visibility at 100 meters
-            2000.0, 0.4 // Half visibility at 1000 meters
-            )
-        }
+    OASIS_POINTS_CONFIG.forEach((point, index) => {
+        const pointEntity = new Cesium.Entity({
+            position: Cesium.Cartesian3.fromDegrees(point.lonlat[0], point.lonlat[1]),
+            point: {
+                pixelSize: 10,
+                color: Cesium.Color.RED,
+            },
+            description: point.name, // Tooltip text for the point
+            name: point.name, // Name of the entity
+            _type: POINT_TYPE,
+            label: {
+                text: point.name,
+                font: config.font,
+                fillColor: config.outlineColor,
+                showBackground: true,
+                backgroundColor: config.labelBackground,
+                //heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+                horizontalOrigin: index != 1 ? Cesium.HorizontalOrigin.LEFT : Cesium.HorizontalOrigin.RIGHT,
+                verticalOrigin: Cesium.VerticalOrigin.TOP,
+                pixelOffset: new Cesium.Cartesian2(index != 1 ? 5 : -5, 5),
+                scaleByDistance: new Cesium.NearFarScalar(500.0, 1.0, // Full visibility
+                2000.0, 0.4 // Half visibility
+                )
+            }
+        });
+        oasisPointsDataSource.entities.add(pointEntity);
     });
-    const OASIS_BATTERIES_LONLAT = [-122.9985, 49.2493];
-    const pointEntity2 = new Cesium.Entity({
-        position: Cesium.Cartesian3.fromDegrees(OASIS_BATTERIES_LONLAT[0], OASIS_BATTERIES_LONLAT[1]),
-        point: {
-            pixelSize: 10,
-            color: Cesium.Color.RED,
-        },
-        description: "Energy Oasis Batteries", // Tooltip text for the point
-        name: "Energy Oasis Batteries", // Name of the entity
-        _type: POINT_TYPE,
-        label: {
-            text: "Energy Oasis Batteries",
-            font: config.font,
-            fillColor: config.outlineColor,
-            showBackground: true,
-            backgroundColor: config.labelBackground,
-            //heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-            horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
-            verticalOrigin: Cesium.VerticalOrigin.TOP,
-            pixelOffset: new Cesium.Cartesian2(5, 5),
-            scaleByDistance: new Cesium.NearFarScalar(500.0, 1.0, // Full visibility at 100 meters
-            2000.0, 0.4 // Half visibility at 1000 meters
-            )
-        }
-    });
-    oasisPointsDataSource.entities.add(pointEntity);
-    oasisPointsDataSource.entities.add(pointEntity2);
     odinCesium.requestRender();
 }
 function buildOasisPointsDataSource() {
@@ -272,7 +255,7 @@ function buildOasisPointsDataSource() {
         // Adjust the clustering if more points are added we want this to be all or nothing
         oasisPointsDataSource.clustering.enabled = true;
         oasisPointsDataSource.clustering.pixelRange = 8;
-        oasisPointsDataSource.clustering.minimumClusterSize = 2;
+        oasisPointsDataSource.clustering.minimumClusterSize = 4;
         oasisPointsDataSource.clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
             cluster.label.show = true;
             cluster.label.text = ENERGY_OASIS_NAME;

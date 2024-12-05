@@ -1,0 +1,5 @@
+AwesenseApiInfo(
+    api_key: "",
+    encrypted_user_credentials: "",
+    base_url: "https://api-connect.awesense.com"
+)

@@ -25,7 +25,6 @@ impl SpaService for TestImageService {
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()> {
         spa.add_assets( self_crate!(), odin_server::load_asset);
-        let odin_server = "odin_server";
         spa.add_module( asset_uri!(odin_server, "ui_windows.js"));
         spa.add_module( asset_uri!(odin_server, "test_image.js"));
         Ok(())

@@ -39,6 +39,7 @@ regex = "*"
 rand = "0.8" # From randomly making data for test
 rand_chacha = "0.3"  # Add this for ChaChaRng
 csv = "*" # For reading the Oasis Power Data file
+reqwest = { workspace = true}
 
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
@@ -57,3 +58,6 @@ bcit_smart_config = { file = "bcit_smart_config.js"}
 bcit_smart = { file = "bcit_smart.js"}
 layer_icon = { file = "button_svg.svg"}
 data = { file="data.json" }
+
+[package.metadata.odin_configs]
+awesense_config = { file="awesense_config.ron" }

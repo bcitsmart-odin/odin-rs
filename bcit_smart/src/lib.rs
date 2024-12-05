@@ -25,6 +25,8 @@ use tracing::Level;
 use tracing_subscriber::fmt::format;
 use tracing_subscriber::EnvFilter;
 
+use serde::{Serialize,Deserialize};
+
 define_load_config! {}
 define_load_asset! {}
 
@@ -51,7 +53,9 @@ fn truncate_message(msg: &str) -> String {
 ///
 /// # Usage
 ///
-/// ```rust
+/// ```no_run
+/// use bcit_smart::create_customized_tracing_subscriber;
+/// use tracing::Level;
 /// create_customized_tracing_subscriber(Some(Level::DEBUG)); // Explicit max level
 /// create_customized_tracing_subscriber(None); // Use RUST_LOG environment variable
 /// ```
@@ -76,4 +80,22 @@ pub fn create_customized_tracing_subscriber(max_level: Option<Level>) {
             .with_env_filter(EnvFilter::from_default_env())
             .init(); // Use RUST_LOG environment variable
     }
+}
+
+
+// Awesense API Area
+
+/// Configuration struct for the Awesense API.
+#[derive(Debug,Serialize,Deserialize)]
+pub struct AwesenseApiInfo {
+    pub api_key: String,
+    pub encrypted_user_credentials: String,
+    pub base_url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AwesenseGrid {
+    pub active: bool,
+    pub description: String,
+    pub id: String,
 }
