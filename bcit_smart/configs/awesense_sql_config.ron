@@ -1,0 +1,7 @@
+AwesenseSqlInfo(
+    user: "",
+    password: "",
+    host: "sandpit-edm.awesense.com",
+    port: 5432,
+    db_name: "edm"
+)

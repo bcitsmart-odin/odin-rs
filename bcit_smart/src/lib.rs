@@ -27,6 +27,11 @@ use tracing_subscriber::EnvFilter;
 
 use serde::{Serialize,Deserialize};
 
+use chrono::{DateTime, Utc}; // for timestamps
+use serde_json::Value;
+use sqlx::{Postgres, FromRow};
+use std::error::Error as StdError;
+
 define_load_config! {}
 define_load_asset! {}
 
@@ -98,4 +103,95 @@ pub struct AwesenseGrid {
     pub active: bool,
     pub description: String,
     pub id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AwesenseSqlInfo {
+    pub user: String,
+    pub password: String,
+    pub host: String,
+    pub port: u32,
+    pub db_name: String,
+}
+
+
+#[derive(Debug, FromRow)]
+pub struct Grid {
+    grid_id: String,
+    description: String,
+    last_updated: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, FromRow)]
+pub struct GridElement {
+    pub grid_id: Option<String>,
+    pub grid_element_id: Option<String>,
+    pub type_: Option<String>, // Use `type_` to avoid conflict with the `type` keyword in Rust
+    pub customer_type: Option<String>,
+    pub phases: Option<String>,
+    pub is_underground: Option<bool>,
+    pub is_producer: Option<bool>,
+    pub is_consumer: Option<bool>,
+    pub is_switchable: Option<bool>,
+    pub switch_is_open: Option<bool>,
+    pub terminal1_cn: Option<String>,
+    pub terminal2_cn: Option<String>,
+    pub power_flow_direction: Option<String>,
+    pub upstream_grid_element_id: Option<String>,
+    pub geometry: Option<GeometryType>, // Custom type for handling geometry
+    pub meta: Option<Value>, // JSONB field is handled as serde_json::Value
+}
+
+// Define a custom enum for handling geometry
+#[derive(Debug)]
+pub enum GeometryType {
+    Point(f64, f64),
+    LineString(Vec<(f64, f64)>),
+}
+
+impl sqlx::Type<sqlx::Postgres> for GeometryType {
+    fn type_info() -> sqlx::postgres::PgTypeInfo {
+        sqlx::postgres::PgTypeInfo::with_name("TEXT")
+    }
+}
+
+impl<'r> sqlx::Decode<'r, Postgres> for GeometryType {
+    fn decode(value: sqlx::postgres::PgValueRef<'r>) -> std::result::Result<Self, Box<dyn StdError + Send + Sync>> {
+        // Decode the WKT as a string
+        let wkt: String = sqlx::Decode::<Postgres>::decode(value)?;
+
+        if wkt.starts_with("POINT") {
+            // Parse POINT
+            let coordinates = wkt.trim_start_matches("POINT(").trim_end_matches(')');
+            let coords: Vec<f64> = coordinates
+                .split_whitespace()
+                .map(|s| s.parse::<f64>().map_err(|e| e.into()))
+                .collect::<Result<_>>()?;
+            if coords.len() == 2 {
+                Ok(GeometryType::Point(coords[0], coords[1]))
+            } else {
+                Err(misc_error("Invalid POINT geometry").into())
+            }
+        } else if wkt.starts_with("LINESTRING") {
+            // Parse LINESTRING
+            let coordinates = wkt.trim_start_matches("LINESTRING(").trim_end_matches(')');
+            let points: Vec<(f64, f64)> = coordinates
+                .split(',')
+                .map(|coord| {
+                    let coords: Vec<f64> = coord
+                        .split_whitespace()
+                        .map(|s| s.parse::<f64>().map_err(|e| e.into()))
+                        .collect::<Result<_>>()?;
+                    if coords.len() == 2 {
+                        Ok((coords[0], coords[1]))
+                    } else {
+                        Err(misc_error("Invalid coordinate in LINESTRING").into())
+                    }
+                })
+                .collect::<Result<_>>()?;
+            Ok(GeometryType::LineString(points))
+        } else {
+            Err(misc_error("Unsupported geometry type").into())
+        }
+    }
 }

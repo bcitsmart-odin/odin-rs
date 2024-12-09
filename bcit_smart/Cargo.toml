@@ -16,6 +16,7 @@ odin_gdal = { workspace = true }
 odin_cesium = { workspace = true }
 
 tokio = { workspace = true }
+sqlx = { version = "*", features = [ "runtime-tokio", "postgres", "json", "time", "chrono" ] }
 anyhow = "*"
 
 axum = { workspace = true }
@@ -61,3 +62,4 @@ data = { file="data.json" }
 
 [package.metadata.odin_configs]
 awesense_config = { file="awesense_config.ron" }
+awesense_sql_config = { file="awesense_sql_config.ron" }
