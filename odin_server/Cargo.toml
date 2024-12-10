@@ -24,7 +24,7 @@ tower = { version = "*", features = ["full"] }
 tower-http = { version = "*", features = ["full"] }
 tracing-subscriber = "*"
 reqwest-middleware = { version = "0.3.3" } # Version 0.4 causes trait bound to be unsatisfied
-http-cache-reqwest = { version = "*" }
+http-cache-reqwest = { version = "0.14.0" }
 paste = "*"
 mime = "*"
 mime_guess = "*"
