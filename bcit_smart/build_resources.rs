@@ -1,20 +1,28 @@
 use odin_build;
 use std::process::Command;
+use std::env;
 
 /// common build script for crates that provide configs and assets
 fn main () {
-    // Specify the path to the directory containing .ts files
-    let ts_dir = ".";
-    let out_dir = "./assets";
-
+    
     // Run the TypeScript compiler
-    println!("cargo:rerun-if-changed={}", ts_dir);
-    let status = Command::new("tsc")
-        .args(&["--outDir", out_dir, "--project", ts_dir])
-        .status()
-        .expect("Failed to compile TypeScript files");
+    let should_compile_ts = env::var("COMPILE_TS").is_ok();
+    
+    // Specify the path to the directory containing .ts files
+    if should_compile_ts {
+        let ts_dir = ".";
+        let out_dir = "./assets";
 
-    assert!(status.success(), "TypeScript compilation failed");
+        println!("cargo:rerun-if-changed={}", ts_dir);
+        let status = Command::new("tsc")
+            .args(&["--outDir", out_dir, "--project", ts_dir])
+            .status()
+            .expect("Failed to compile TypeScript files");
+    
+        assert!(status.success(), "TypeScript compilation failed");
+    } else {
+        println!("Skipping TypeScript compilation; COMPILE_TS not set.");
+    }
 
 
     odin_build::init_build();
