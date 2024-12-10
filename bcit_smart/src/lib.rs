@@ -94,7 +94,7 @@ pub fn create_customized_tracing_subscriber(max_level: Option<Level>) {
 #[derive(Debug,Serialize,Deserialize)]
 pub struct AwesenseApiInfo {
     pub api_key: String,
-    pub encrypted_user_credentials: String,
+    pub encoded_user_credentials: String,
     pub base_url: String,
 }
 

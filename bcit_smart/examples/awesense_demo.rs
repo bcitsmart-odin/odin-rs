@@ -85,7 +85,7 @@ async fn main() -> anyhow::Result<()> {
 async fn get_available_grids_using_rest(client: &Client, config: &AwesenseApiInfo) -> Result<Vec<AwesenseGrid>> {
     let res = client.get(ENDPOINT)
         .header(API_KEY_HEADER_NAME, &config.api_key)
-        .header(ENCRYPTED_USER_CREDENTIALS_HEADER_NAME, &config.encrypted_user_credentials)
+        .header(ENCRYPTED_USER_CREDENTIALS_HEADER_NAME, &config.encoded_user_credentials)
         .send().await?;
     
     if res.status() != 200 {

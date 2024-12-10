@@ -23,7 +23,7 @@ async fn test_grids_available() -> Result<(), Box<dyn std::error::Error>> {
         "API key is missing from the config file"
     );
     assert!(
-        !config.encrypted_user_credentials.is_empty(),
+        !config.encoded_user_credentials.is_empty(),
         "Encrypted user credentials are missing from the config file"
     );
     assert!(
@@ -35,7 +35,7 @@ async fn test_grids_available() -> Result<(), Box<dyn std::error::Error>> {
     let response = client
         .get(&format!("{}/{}", config.base_url, grid_available_endpoint))
         .header(API_KEY_HEADER_NAME, &config.api_key)
-        .header(ENCRYPTED_USER_CREDENTIALS_HEADER_NAME, &config.encrypted_user_credentials)
+        .header(ENCRYPTED_USER_CREDENTIALS_HEADER_NAME, &config.encoded_user_credentials)
         .send().await?;
 
     // Check that the response status code is 200
