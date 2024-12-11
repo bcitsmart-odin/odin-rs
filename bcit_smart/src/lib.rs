@@ -1,3 +1,5 @@
+#![allow(unused_variables, unused_attributes, unused)]
+
 use odin_actor::prelude::*;
 use odin_build;
 use odin_build::prelude::*;
@@ -20,6 +22,12 @@ pub use oasis_actor::*;
 
 pub mod oasis_web;
 pub use oasis_web::*;
+
+pub mod awesense_actor;
+pub use awesense_actor::*;
+
+pub mod awesense_web;
+pub use awesense_web::*;
 
 use tracing::Level;
 use tracing_subscriber::fmt::format;
@@ -122,7 +130,7 @@ pub struct Grid {
     last_updated: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Serialize)]
 pub struct GridElement {
     pub grid_id: Option<String>,
     pub grid_element_id: Option<String>,
@@ -143,7 +151,7 @@ pub struct GridElement {
 }
 
 // Define a custom enum for handling geometry
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum GeometryType {
     Point(f64, f64),
     LineString(Vec<(f64, f64)>),

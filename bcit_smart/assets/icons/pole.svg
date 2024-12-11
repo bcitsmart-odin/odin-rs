@@ -1,0 +1,41 @@
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Transformed by: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 64 64" data-name="Layer 1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" fill="#000000">
+
+<g id="SVGRepo_bgCarrier" stroke-width="0"/>
+
+<g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"/>
+
+<g id="SVGRepo_iconCarrier">
+
+<defs>
+
+<!-- <style>.cls-1{fill:#000000;}.cls-2{fill:#000000;}.cls-3{fill:#000000;}.cls-4{fill:#000000;}</style> -->
+<style>.cls-1{fill:#000000;}.cls-2{fill:#000000;}.cls-3{fill:#000000;}.cls-4{fill:#000000;}</style>
+
+</defs>
+
+<polyline fill="#000000" points="37 35 47 35 47 51 37 51"/>
+
+<polyline fill="#000000" points="27 35 17 35 17 51 27 51"/>
+
+<polyline fill="#000000" points="49 13 49 7 53 7 53 13"/>
+
+<polyline fill="#000000" points="41 13 41 7 45 7 45 13"/>
+
+<polyline fill="#000000" points="19 13 19 7 23 7 23 13"/>
+
+<polyline fill="#000000" points="11 13 11 7 15 7 15 13"/>
+
+<polygon fill="#000000" points="37 62 27 62 27 4 28 2 36 2 37 4 37 62"/>
+
+<polyline fill="#000000" points="27 17 4 17 4 13 27 13"/>
+
+<polyline fill="#000000" points="37 13 60 13 60 17 37 17"/>
+
+<path fill="#000000" d="M60,12H38V4a1,1,0,0,0-.11-.45l-1-2A1,1,0,0,0,36,1H28a1,1,0,0,0-.89.55l-1,2A1,1,0,0,0,26,4v8H4a1,1,0,0,0-1,1v4a1,1,0,0,0,1,1H8.59L26,35.41V62a1,1,0,0,0,1,1H37a1,1,0,0,0,1-1V35.41L55.41,18H60a1,1,0,0,0,1-1V13A1,1,0,0,0,60,12ZM5,14H26v2H5Zm6.41,4H26V32.59ZM36,61H28V4.24L28.62,3h6.76L36,4.24Zm2-28.41V18H52.59ZM59,16H38V14H59Z"/>
+
+</g>
+
+</svg>

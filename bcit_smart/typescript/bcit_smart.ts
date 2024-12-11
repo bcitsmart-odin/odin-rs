@@ -125,9 +125,6 @@ function createIcon() {
 function createSettingsWindow() {
     return ui.Window("Test Map-Lines", LINE_SETTINGS, "./asset/bcit_smart/button_svg.svg")(
         ui.LayerPanel(LINE_SETTINGS, toggleShowLines),
-        ui.Panel("data sets", true)(
-            ui.CheckBox("show lines", toggleShowLines, "lines"),
-        ),
         ui.Button("Send message back to server", sendHello)
     );
 }
@@ -254,6 +251,54 @@ function handlePowerLineDataSet({powerlines}) {
     // Think about how to handle updates as in replacing data // updating already received data etc..
     // For now just going to replace everything on update
     lineDataSource.entities.removeAll();
+
+    // const test_line_data = [
+    //     [
+    //         [-123.10486705, 49.266949997],
+    //         [-123.103687403, 49.266935119],
+    //         [-123.103635106, 49.266934209],
+    //     ],
+    //     [
+    //         [-123.103687659, 49.266928374],
+    //         [-123.103937444, 49.2668337]
+    //     ],
+    //     [
+    //         [-123.103687659, 49.266928374],
+    //         [-123.103691751, 49.266820465]
+    //     ],
+    //     [
+    //         [-123.103687659, 49.266928374],
+    //         [-123.103635106, 49.266934209]
+    //     ],
+    //     [
+    //         [-123.103687659, 49.266928374],
+    //         [-123.103450979, 49.266820238]
+    //     ],
+    //     [
+    //         [-123.103635106, 49.266934209],
+    //         [-123.103169354, 49.266985916]
+    //     ],
+    //     [
+    //         [-123.103635106, 49.266934209],
+    //         [-123.1029626, 49.266922508]
+    //     ]
+    // ]
+
+    // test_line_data.forEach((line, index) => {
+    //     const lineEntity = new Cesium.Entity({
+    //         polyline: {
+    //             positions: Cesium.Cartesian3.fromDegreesArray(line.flat()),
+    //             width: 2, // Default width if not specified
+    //             material: Cesium.Color.RED // Default color if not specified
+    //         },
+    //         _type : LINE_TYPE,
+    //         powId: index,
+    //         time: "2021-08-12 12:00:00"
+    //     } as any);
+
+    //     // Add the line entity to the data source
+    //     lineDataSource.entities.add(lineEntity);
+    // });
     
     // Iterate over each line and create an entity for it
     convertServerPowerlineToCesiumLines(powerlines).forEach(line => {
