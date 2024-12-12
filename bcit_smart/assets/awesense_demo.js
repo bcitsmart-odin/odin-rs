@@ -273,7 +273,7 @@ function handleAwesenseTraceResponse(response) {
         traceDataSource.entities.removeAll();
     }
     // Create highlighted lines for the ACLineSegments and total up all the other element types
-    let elementCounts = {};
+    const elementCounts = {};
     response.forEach((element) => {
         if (element.type_ === "ACLineSegment") {
             const lineEntity = new Cesium.Entity({
@@ -288,9 +288,7 @@ function handleAwesenseTraceResponse(response) {
             });
             traceDataSource.entities.add(lineEntity);
         }
-        else {
-            elementCounts[element.type_] = (elementCounts[element.type_] || 0) + 1;
-        }
+        elementCounts[element.type_] = (elementCounts[element.type_] || 0) + 1;
     });
     console.log("Element Counts: ", elementCounts);
     // Create a summary of the trace response

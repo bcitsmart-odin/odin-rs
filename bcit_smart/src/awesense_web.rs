@@ -44,7 +44,7 @@ impl AwesenseWebService {
 impl SpaService for AwesenseWebService {
     fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
         spa_builder
-            .add( build_service!( ImgLayerService::new()))
+            .add( build_service!( => ImgLayerService::new()))
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()>  {

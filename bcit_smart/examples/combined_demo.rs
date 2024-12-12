@@ -38,7 +38,7 @@ pub struct TestImageService {}
 impl SpaService for TestImageService {
 
     fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
-        spa_builder.add( build_service!( UiService::new()))
+        spa_builder.add( build_service!( => UiService::new()))
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()> {
@@ -81,10 +81,10 @@ async fn main ()->anyhow::Result<()> {
         "live",
         SpaServiceList::new()
         // Create a service here
-            .add( build_service!( TestImageService{} )) // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
-            .add( build_service!( oasis_web_service ) )
-            .add( build_service!( awesense_web_service ) )
-            .add( build_service!( GoesrService::new( vec![goes18,goes16])) )
+            .add( build_service!( => TestImageService{} )) // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
+            .add( build_service!( => oasis_web_service ) )
+            .add( build_service!( => awesense_web_service ) )
+            .add( build_service!( => GoesrService::new( vec![goes18,goes16])) )
     ))?;
 
     //--- (3) spawn the data source actors we did set up in (1)

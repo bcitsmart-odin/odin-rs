@@ -46,7 +46,7 @@ async fn main ()->anyhow::Result<()> {
         "live",
         SpaServiceList::new()
         // Create a service here
-            .add( build_service!( awesense_web_service ) )
+            .add( build_service!( => awesense_web_service ) )
     ))?;
 
     let _h_awesense_actor = spawn_pre_actor!( actor_system, preactor_handle_awesense, AwesenseActor::new(

@@ -20,7 +20,7 @@ pub struct TestImageService {}
 impl SpaService for TestImageService {
 
     fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
-        spa_builder.add( build_service!( UiService::new()))
+        spa_builder.add( build_service!( => UiService::new()))
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()> {
@@ -49,8 +49,8 @@ run_actor_system!( actor_system => {
         "live",
         SpaServiceList::new()
         // Create a service here
-            .add( build_service!( TestImageService{} )) // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
-            .add( build_service!( PowerLineService::new(vec![powerline_source])) )
+            .add( build_service!( => TestImageService{} )) // Currently having problems with asset files not being copied properly, if this is second PowerLineService won't work.
+            .add( build_service!( => PowerLineService::new(vec![powerline_source])) )
     ))?;
 
     //--- (3) spawn the data source actors we did set up in (1) 
