@@ -7,6 +7,7 @@ fn main () {
     
     // Run the TypeScript compiler
     let should_compile_ts = env::var("COMPILE_TS").is_ok();
+    // let should_compile_ts = true; // if the env doesn't work
     
     // Specify the path to the directory containing .ts files
     if should_compile_ts {

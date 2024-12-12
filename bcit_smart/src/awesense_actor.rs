@@ -52,7 +52,6 @@ impl AwesenseDataSet {
                 meta
             FROM grid_element
             WHERE grid_id = $1
-            LIMIT 200
             "#
         )
         .bind("awefice") // Bind the grid_id parameter
@@ -97,7 +96,7 @@ impl AwesenseDataSet {
                 GRID_ELEMENT_COLUMNS
             ),
             "Nearby" => format!(
-                "SELECT {} FROM grid_get_nearby($1, $2, 5, 0)", // Adjust default values if needed
+                "SELECT {} FROM grid_get_nearby($1, $2, 5, 0)", // 3rd parameter is max_depth, 4th is terminal
                 GRID_ELEMENT_COLUMNS
             ),
             "Same Voltage" => format!(
@@ -105,7 +104,7 @@ impl AwesenseDataSet {
                 GRID_ELEMENT_COLUMNS
             ),
             "Source" => format!(
-                "SELECT {} FROM grid_get_sources($1, $2, true)", // Adjust default values if needed
+                "SELECT {} FROM grid_get_sources($1, $2, true)", 
                 GRID_ELEMENT_COLUMNS
             ),
             _ => {
@@ -116,7 +115,7 @@ impl AwesenseDataSet {
 
         
         let grid_elements: Vec<GridElement> = sqlx::query_as(&sql_query)
-        .bind("awefice") // Change this for other grids later
+        .bind("awefice") // TODO Change this for other grids later
         .bind(grid_element_id) // Bind the grid_id parameter
         .fetch_all(&self.connection_pool)
         .await.unwrap();

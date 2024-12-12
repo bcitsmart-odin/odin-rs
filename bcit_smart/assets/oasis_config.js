@@ -2,7 +2,7 @@
 
 export const config = {
     layer: {
-      name: "/test/lines/coloured-lines",
+      name: "oasis/poi",
       description: "Oasis Points of Interest",
       show: true,
     },

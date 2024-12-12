@@ -12,44 +12,124 @@ import * as ui from "../odin_server/ui.js"; // @ts-ignore
 import * as ws from "../odin_server/ws.js"; // @ts-ignore
 import * as odinCesium from "../odin_cesium/odin_cesium.js";
 const MODULE_PATH = util.asset_path(import.meta.url);
-const POINT_TYPE = "awesensePoint";
+const AWESENSE_GRID_ELEMENT = "awesenseGridElement";
 const AWESENSE_SETTINGS = "awesenseSettings";
 const GRID_ELEMENT_DETAILS = "awesenseElementDetails";
 const AWESENSE_DEMO_NAME = "Awesense Demo Data";
-const AWESENSE_CAMERA_POSITION = Cesium.Cartesian3.fromDegrees(-122.9996, 49.2494, 610);
 ws.addWsHandler(MODULE_PATH, handleWsMessages);
-//--- display params we can change from config file can be extracted here as Consts
+let grid_element_list = [];
+let traceDataSource = null;
 let selectedGridElement = null;
+let awesenseElementSource;
+const iconMap = {
+    Meter: "./asset/bcit_smart/icons/meter.svg",
+    Photovoltaic: "./asset/bcit_smart/icons/solar-panel.svg",
+    Fuse: "./asset/bcit_smart/icons/fuse.svg",
+    CircuitBreaker: "./asset/bcit_smart/icons/switch.svg",
+    Transformer: "./asset/bcit_smart/icons/transformer.svg",
+    Battery: "./asset/bcit_smart/icons/battery.svg",
+    Pole: "./asset/bcit_smart/icons/pole.svg",
+    Switch: "./asset/bcit_smart/icons/switch.svg",
+    EVCharger: "./asset/bcit_smart/icons/electric-station.svg",
+    ACLineSegment: "./asset/bcit_smart/icons/line.svg",
+};
+const phaseToColor = {
+    A: '#FF0000', // Red
+    B: '#00FF00', // Green
+    C: '#0000FF', // Blue
+    ABC: '#FFFF00', // Yellow
+};
+const SUPPORTED_ELEMENT_TYPES = ["Meter", "Photovoltaic", "Fuse", "CircuitBreaker", "Transformer", "Battery", "Pole", "Switch", "EVCharger", "ACLineSegment"];
+const svgCache = {}; // Cache for modified SVGs
+const elementVisibility = {};
+buildAwesenseElementsDataSource();
 createAwesenseIcon();
 createAwesenseSettingsWindow();
 createAwesenseDetailsWindow();
 odinCesium.setEntitySelectionHandler(awesensePointSelection);
 odinCesium.initLayerPanel(AWESENSE_SETTINGS, config, toggleAwesensePoints);
 odinCesium.initLayerPanel(GRID_ELEMENT_DETAILS, config, () => null);
-if (config.layer.show) {
-    // initOasisPoints();
-}
-console.log("ui_bcit_smart initialized");
+console.log("ui_awesense_demo initialized");
 function createAwesenseIcon() {
     return ui.Icon("./asset/odin_cesium/globe.svg", (e) => ui.toggleWindow(e, AWESENSE_SETTINGS));
 }
 /**
- *  Window that opens when you click on an Energy Oasis Icon.
- *  Has controls for the Energy Oasis Points.
+ *  Window that opens when you click on the Awesense Icon.
+ *  Has controls for the display of awesence grid elements.
  */
 function createAwesenseSettingsWindow() {
-    return ui.Window("Test Oasis Data", AWESENSE_SETTINGS, "./asset/bcit_smart/button_svg.svg")(ui.LayerPanel(AWESENSE_SETTINGS, checkboxToggleShowPoints));
+    SUPPORTED_ELEMENT_TYPES.forEach(type => {
+        elementVisibility[type] = true; // Default to visible
+    });
+    // Callback to handle checkbox toggle
+    function checkboxToggleShowPoints(type) {
+        return function (event) {
+            const isChecked = event.target.checked;
+            elementVisibility[type] = isChecked;
+            // Toggle visibility of entities of this type
+            awesenseElementSource.entities.values.forEach(entity => {
+                if (entity._type === type) {
+                    entity.show = isChecked;
+                }
+            });
+            odinCesium.requestRender();
+            console.log(`Toggled ${type}: ${isChecked}`);
+        };
+    }
+    // Create checkboxes for each element type
+    const checkboxes = SUPPORTED_ELEMENT_TYPES.map(type => {
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = true; // Default to checked (visible)
+        checkbox.className = "type-checkbox";
+        checkbox.addEventListener("change", checkboxToggleShowPoints(type));
+        const label = document.createElement("label");
+        label.className = "checkbox-label";
+        label.textContent = type;
+        // Add an icon for each type
+        const icon = document.createElement("img");
+        icon.src = iconMap[type]; // Adjust path and file names
+        icon.alt = `${type} icon`;
+        icon.className = "type-icon";
+        // Combine icon, checkbox, and label
+        const container = document.createElement("div");
+        container.className = "checkbox-container";
+        container.appendChild(icon);
+        container.appendChild(checkbox);
+        container.appendChild(label);
+        return container;
+    });
+    // Create legend container
+    const legend = document.createElement("div");
+    legend.className = "legend-container";
+    const legendTitle = document.createElement("h3");
+    legendTitle.textContent = "Phase Legend";
+    legend.appendChild(legendTitle);
+    Object.entries(phaseToColor).forEach(([phase, color]) => {
+        const legendItem = document.createElement("div");
+        legendItem.className = "legend-item";
+        // Color box
+        const colorBox = document.createElement("span");
+        colorBox.className = "legend-color-box";
+        colorBox.style.backgroundColor = color;
+        // Phase label
+        const phaseLabel = document.createElement("span");
+        phaseLabel.className = "legend-phase-label";
+        phaseLabel.textContent = phase;
+        // Append to legend item
+        legendItem.appendChild(colorBox);
+        legendItem.appendChild(phaseLabel);
+        legend.appendChild(legendItem);
+    });
+    // console.log("checkboxes", checkboxes);
+    return ui.Window("Awesense Data Settings", AWESENSE_SETTINGS, "./asset/bcit_smart/button_svg.svg")(ui.LayerPanel(AWESENSE_SETTINGS, checkboxToggleShowPoints), ui.Panel("data sets", true, "awesense-settings-window")(...checkboxes), ui.Panel("legend", true, "awesense-legend-window")(legend));
 }
 /**
- *  Window that opens when you click on an Energy Oasis point of interest
- *  Contents of this window get changed by the chart creation
+ *  Window that opens when you click on an Awesense Grid Element
+ *  Contents of this window get changed by clicking on a different element
  */
 function createAwesenseDetailsWindow() {
-    // const testSpan = document.createElement("span");
-    // testSpan.id = "point-details-name";
-    return ui.Window("Point Details", GRID_ELEMENT_DETAILS, "./asset/bcit_smart/button_svg.svg")(
-    // testSpan,
-    ui.Panel("data sets", true, "oasis-details-window")(ui.CheckBox("show lines", checkboxToggleShowPoints, "lines"), ui.List("powerlines.selectedPowerline", 3, () => console.log("When is this called?"))));
+    return ui.Window("Point Details", GRID_ELEMENT_DETAILS, "./asset/bcit_smart/button_svg.svg")(ui.Panel("data sets", true, "awesense-details-window")());
 }
 function checkboxToggleShowPoints(event) {
     const cb = ui.getCheckBox(event.target);
@@ -58,13 +138,9 @@ function checkboxToggleShowPoints(event) {
     }
 }
 function toggleAwesensePoints(showLines) {
-    if (awesenseElementSource === null) {
-        // initOasisPoints();
-    }
     awesenseElementSource.show = showLines ?? true;
     odinCesium.requestRender();
 }
-const SUPPORTED_ELEMENT_TYPES = ["Meter", "Photovoltatic", "Fuse", "CircuitBreaker", "Transformer", "Battery", "Pole", "Switch", "EVCharger", "ACLineSegment"];
 /**
  * Registered with odinCessium to be called when an entity is clicked.
  * Checks to see if it was entity it is responsible for (Awesense Grid Elements)
@@ -73,12 +149,25 @@ function awesensePointSelection() {
     const sel = odinCesium.getSelectedEntity();
     if (sel && sel._type && SUPPORTED_ELEMENT_TYPES.includes(sel._type)) {
         ui.showWindow(GRID_ELEMENT_DETAILS);
-        ui.setWindowLocation(ui.getWindow(GRID_ELEMENT_DETAILS), 200, 200);
+        ui.setWindowLocation(ui.getWindow(GRID_ELEMENT_DETAILS), 100, 100);
         selectedGridElement = sel.name;
         const detailsWindow = ui.getWindow(GRID_ELEMENT_DETAILS);
         buildGridElementDetailsVisualization(selectedGridElement, detailsWindow);
     }
     console.log("selected entity:", sel);
+}
+function formatGeometry(geometry) {
+    if ("Point" in geometry && Array.isArray(geometry.Point)) {
+        const [x, y] = geometry.Point;
+        return `${x.toFixed(4)}, ${y.toFixed(4)}`;
+    }
+    else if ("LineString" in geometry && Array.isArray(geometry.LineString)) {
+        const formattedCoords = geometry.LineString.map(([x, y]) => `[${x.toFixed(4)}, ${y.toFixed(4)}]`);
+        return formattedCoords.join(", ");
+    }
+    else {
+        return "Unsupported Geometry";
+    }
 }
 /**
  * Builds the details window for the selected Awesense Grid Element
@@ -101,7 +190,10 @@ function buildGridElementDetailsVisualization(pointName, window) {
         console.log("Selected Grid Element: ", gridElement);
         if (gridElement) {
             const propertiesHTML = Object.entries(gridElement).map(([key, value]) => {
-                const displayValue = value !== null && value !== undefined ? value : "N/A";
+                let displayValue = value !== null && value !== undefined ? value : "N/A";
+                if (key === "geometry" && value !== null && value !== undefined) {
+                    displayValue = formatGeometry(value);
+                }
                 const propertyRow = document.createElement("div");
                 propertyRow.className = "property-row";
                 const propertyKey = document.createElement("span");
@@ -164,15 +256,13 @@ function handleWsMessages(msgType, msg) {
             ;
     }
 }
-let grid_element_list = [];
 /**
- * Parses the Oasis Data in a way convenient to use in line chart
+ * Parses the Awesense Data in a way convenient to use in line chart
  */
 function handleAwesenseElementList(new_awesense_data) {
     grid_element_list = new_awesense_data;
     buildAwesenseElementsDataSource();
 }
-let traceDataSource = null;
 function handleAwesenseTraceResponse(response) {
     // console.log("Received trace response: ", response);
     if (!traceDataSource) {
@@ -207,25 +297,6 @@ function handleAwesenseTraceResponse(response) {
     // TODO
     odinCesium.requestRender();
 }
-let awesenseElementSource;
-const iconMap = {
-    Meter: "./asset/bcit_smart/icons/meter.svg",
-    Photovoltatic: "./asset/bcit_smart/icons/solar-panel.svg",
-    Fuse: "./asset/bcit_smart/icons/fuse.svg",
-    CircuitBreaker: "./asset/bcit_smart/icons/switch.svg",
-    Transformer: "./asset/bcit_smart/icons/transformer.svg",
-    Battery: "./asset/bcit_smart/icons/battery.svg",
-    Pole: "./asset/bcit_smart/icons/pole.svg",
-    Switch: "./asset/bcit_smart/icons/switch.svg",
-    EVCharger: "./asset/bcit_smart/icons/electric-station.svg",
-};
-const phaseToColor = {
-    A: '#FF0000', // Red
-    B: '#00FF00', // Green
-    C: '#0000FF', // Blue
-    ABC: '#FFFF00', // Yellow
-};
-const svgCache = {}; // Cache for modified SVGs
 async function getColoredSvg(type_, fillColor) {
     // Initialize cache for the type if it doesn't exist
     if (!svgCache[type_]) {

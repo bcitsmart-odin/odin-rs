@@ -3,7 +3,7 @@
 export const config = {
   layer: {
     name: "/awesense/demo",
-    description: "Test of consuming Awesense data",
+    description: "Test Data provided by Awesense",
     show: true,
   }
 };

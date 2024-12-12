@@ -1,5 +1,5 @@
 // The version of this with the private cesium access token should be in ODIN_HOME/assets/odin_cesium
-// Storing this version here so it is repo, if you want to make changes make sure to recopy this over to version in assets folder
+// Storing this version here so it is in repo, if you want to make changes make sure to recopy this over to version in assets/odin_cesium folder
 
 // this has to be set *before* calling any Cesium functions
 Cesium.Ion.defaultAccessToken = null; // replace with your Cesium Ion access token from https://ion.cesium.com/tokens?page=1

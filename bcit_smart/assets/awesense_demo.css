@@ -40,3 +40,71 @@
 .trace-button:hover {
   background-color: #e0e0e0;
 }
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.type-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+}
+
+.type-checkbox {
+  margin-right: 10px;
+}
+
+.checkbox-label {
+  flex-grow: 1;
+}
+
+.legend-container {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+  width: 200px;
+  font-family: Arial, sans-serif;
+}
+
+.legend-container h3 {
+  margin: 0;
+  margin-bottom: 10px;
+  font-size: 16px;
+  text-align: center;
+  color: black;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.legend-color-box {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #000;
+  margin-right: 10px;
+}
+
+.legend-phase-label {
+  font-size: 14px;
+  color: #333;
+}
+
+#awesense-legend-window {
+  display: flex;
+  align-items: center;
+}
+
+#awesense-settings-window {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+}

@@ -118,7 +118,6 @@ console.log("ui_bcit_smart initialized");
 
 
 function createIcon() {
-    // return ui.Icon("./asset/bcit_smart/powerline_icon.svg", (e)=> ui.toggleWindow(e,LINE_SETTINGS));
     return ui.Icon("./asset/odin_cesium/globe.svg", (e)=> ui.toggleWindow(e,LINE_SETTINGS));
 }
 

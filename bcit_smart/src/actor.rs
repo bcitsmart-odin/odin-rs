@@ -150,7 +150,7 @@ impl_actor! { match msg for Actor< PowerLineActor<IMP, U, I>, PowerLineImportAct
     }
 
     ExecSnapshotAction => cont! { 
-        debug!("Exec SnapShoot Action");
+        debug!("powerlineactor Exec SnapShoot Action");
         let _ = msg.0.execute( &self.powerline_store).await; 
     } // Ignoring this for now
 
