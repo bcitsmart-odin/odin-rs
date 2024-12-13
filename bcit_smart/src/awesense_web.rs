@@ -87,7 +87,7 @@ impl SpaService for AwesenseWebService {
     }
 
     async fn init_connection (&mut self, hself: &ActorHandle<SpaServerMsg>, is_data_available: bool, conn: &mut SpaConnection) -> OdinServerResult<()> {
-        println!("Init Connection for the Awesense service: Data available: {}", is_data_available);
+        debug!("Init Connection for the Awesense service: Data available: {}", is_data_available);
         let initial_message = "Awesense Service initializing a connection";
         let msg = ws_msg!( "bcit_smart/awesense_demo.js", initial_message).to_json()?;
         conn.send(msg).await?;

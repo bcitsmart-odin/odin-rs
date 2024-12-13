@@ -8,11 +8,11 @@ use odin_actor::ActorHandle;
 
 pub use bcit_smart::errors::*;
 
-pub use bcit_smart::web::*;
+pub use bcit_smart::basic_web::*;
 
-pub use bcit_smart::actor::*;
+pub use bcit_smart::basic_actor::*;
 
-pub use bcit_smart::live_importer::*;
+pub use bcit_smart::basic_live_importer::*;
 
 pub use bcit_smart::oasis_actor::*;
 pub use bcit_smart::oasis_web::*;

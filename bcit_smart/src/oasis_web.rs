@@ -90,7 +90,7 @@ impl SpaService for OasisService {
     }
 
     async fn init_connection (&mut self, hself: &ActorHandle<SpaServerMsg>, is_data_available: bool, conn: &mut SpaConnection) -> OdinServerResult<()> {
-        println!("Init Connection for the Oasis service");
+        debug!("Init Connection for the Oasis service");
         let initial_message = "Oasis Service initializing a connection";
         let msg = ws_msg!( "bcit_smart/oasis_points.js", initial_message).to_json()?;
         conn.send(msg).await?;

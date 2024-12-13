@@ -114,14 +114,14 @@ async fn run_data_acquisition (hself: ActorHandle<PowerLineImportActorMsg>, conf
 
     //--- run update loop
     loop {
-        // Gonna update every 15secs to start for testing, should maybe swap this to depend on time since last finished loop
-        sleep( secs(45)).await;
+        // Gonna update every 15 secs to start for testing, should maybe swap this to depend on time since last finished loop
+        sleep( secs(15)).await;
 
         let data = read_powerline_data_from_asset_file(&source).await?;
         let mut powerlines = convert_file_data_to_powerline_struct(data);
 
+        // Is just to create a random set of data to simulate changing data
         let mut rng = ChaChaRng::from_entropy();  // Use ChaChaRng instead of ThreadRng because async
-
         let num_to_drop = rng.gen_range(0..=3);
         powerlines.shuffle(&mut rng);
 

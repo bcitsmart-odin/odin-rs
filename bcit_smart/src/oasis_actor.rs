@@ -190,17 +190,17 @@ impl_actor! { match msg for Actor<OasisActor<I, U>, OasisImportActorMsg>
         // we expect the data to ever change.
         let hself = self.hself.clone();
         let starting_data = OasisDataSet::from_csv("OASIS_Power_Data.csv", true).expect("Error getting the Oasis data from the CSV");
-        println!("Got the csv data in Oasis Start");
+        debug!("Got the csv data in Oasis Start");
         let _ = hself.send_msg( InitializeOasis( starting_data )).await;
     }
 
     ExecSnapshotActionOasis => cont! { 
-        println!("Oasis Exec SnapShoot Action");
+        debug!("Oasis Exec SnapShoot Action");
         let _ = msg.0.execute( &self.data_store).await; 
     } // Ignoring this for now
 
     InitializeOasis => cont! { 
-        println!("Oasis Initialize on oasisActor");
+        debug!("Oasis Initialize on oasisActor");
         // should anything happen is <Err> comes back from init? 
         let _ = self.init(msg.0).await; 
     }

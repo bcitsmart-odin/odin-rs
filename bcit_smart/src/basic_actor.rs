@@ -7,16 +7,9 @@ use odin_common::geo::LatLon;
 use std::{fmt::Debug, sync::Arc};
 use serde::Serialize;
 use chrono::{DateTime, Utc};
-// use std::future::Future;
 use futures::Future;
 
 use crate::errors::*;
-
-// If we need individual config for this Actor can go here
-// #[derive(Serialize,Deserialize,Debug)]
-// pub struct PowerLineConfig {
-//     pub max_records: usize,
-// }
 
 // Gonna fake this part to start with
 // This part would store info about the data source used to get info
@@ -33,10 +26,8 @@ pub struct PowerLineData {
 #[serde(rename_all(serialize = "camelCase"))]
 pub struct PowerLine {
     pub pow_id: u32,
-    pub positions: Vec<LatLon>, // Should maybe be vec to draw complex lines
+    pub positions: Vec<LatLon>,
     pub time: String
-    // pub source: Arc<String>, // don't duplicate (think about this later)
-    // pub pixel_size: Length // might be good to add later
 }
 
 impl PowerLine {
@@ -141,7 +132,7 @@ impl_actor! { match msg for Actor< PowerLineActor<IMP, U, I>, PowerLineImportAct
         U: DataAction<PowerLineSet> + Sync
     as
     _Start_ => cont! { 
-        // We should be starting the actor responsible for getting PowerLine info here that will
+        // We should be starting the task responsible for getting PowerLine info here that will
         // then start sending this actor updates when it has data.
         debug!("Start on PowerLineActor");
         let hself = self.hself.clone();
@@ -152,7 +143,7 @@ impl_actor! { match msg for Actor< PowerLineActor<IMP, U, I>, PowerLineImportAct
     ExecSnapshotAction => cont! { 
         debug!("powerlineactor Exec SnapShoot Action");
         let _ = msg.0.execute( &self.powerline_store).await; 
-    } // Ignoring this for now
+    }
 
     Initialize => cont! { 
         debug!("Initialize on powerlineactor");

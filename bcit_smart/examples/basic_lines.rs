@@ -1,3 +1,9 @@
+/*
+    The purpose of this example is to show the running of a basic implementation that display dynamicly
+    changing data. It makes use of the PowerLineService to handle communication with the frontend
+    and the PowerLineActor to handle the data. The PowerLineActor is updated by the PowerLineImporter.
+*/
+
 use std::any::type_name;
 
 use odin_actor::prelude::*;
@@ -8,11 +14,11 @@ use odin_actor::ActorHandle;
 
 pub use bcit_smart::errors::*;
 
-pub use bcit_smart::web::*;
+pub use bcit_smart::basic_web::*;
 
-pub use bcit_smart::actor::*;
+pub use bcit_smart::basic_actor::*;
 
-pub use bcit_smart::live_importer::*;
+pub use bcit_smart::basic_live_importer::*;
 
 pub struct TestImageService {}
 

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-
 // @ts-ignore
 import { config } from "./bcit_smart_config.js"; // @ts-ignore
 import * as util from "../odin_server/ui_util.js"; // @ts-ignore
@@ -21,82 +19,10 @@ ws.addWsHandler( MODULE_PATH, handleWsMessages);
 //--- display params we can change from config file can be extracted here
 
 
-let selectedPowerline = [];
-
 createIcon();
 createSettingsWindow();
 createDetailsWindow();
 initPowerLineDetailsView();
-
-let pointDataSource = null;
-// initOasisPoints();
-// function initOasisPoints() {
-//     const point = [ -122.9994, 49.2497];
-    
-//     if (!pointDataSource) {
-//         pointDataSource = new Cesium.CustomDataSource("oasisPoints");
-//         odinCesium.addDataSource(pointDataSource);
-//     }
-
-//     const pointEntity = new Cesium.Entity({
-//         position: Cesium.Cartesian3.fromDegrees(point[0], point[1]),
-//         point: {
-//             pixelSize: 10,
-//             color: Cesium.Color.RED,
-//         },
-//         description: "Oasis EV Chargers", // Tooltip text for the point
-//         name: "Oasis EV Chargers", // Name of the entity
-//         _type: POINT_TYPE,
-//         label: {
-//             text: "Oasis Point",
-//             font: config.font,
-//             fillColor: config.outlineColor,
-//             showBackground: true,
-//             backgroundColor: config.labelBackground,
-//             //heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-//             horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
-//             verticalOrigin: Cesium.VerticalOrigin.TOP,
-//             pixelOffset: new Cesium.Cartesian2( 5, 5),
-//             scaleByDistance: new Cesium.NearFarScalar(
-//                 500.0, 1.0, // Full visibility at 100 meters
-//                 2000.0, 0.4 // Half visibility at 1000 meters
-//             )
-//         }
-//     } as any);
-//     const point2 = [-122.9985, 49.2493];
-//     const pointEntity2  = new Cesium.Entity({
-//         position: Cesium.Cartesian3.fromDegrees(point2[0], point2[1]),
-//         point: {
-//             pixelSize: 10,
-//             color: Cesium.Color.RED,
-//         },
-//         description: "Oasis Point Example", // Tooltip text for the point
-//         name: "Oasis Point", // Name of the entity
-//         _type: POINT_TYPE,
-//         label: {
-//             text: "Oasis Battery Bank",
-//             font: config.font,
-//             fillColor: config.outlineColor,
-//             showBackground: true,
-//             backgroundColor: config.labelBackground,
-//             //heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-//             horizontalOrigin: Cesium.HorizontalOrigin.LEFT,
-//             verticalOrigin: Cesium.VerticalOrigin.TOP,
-//             pixelOffset: new Cesium.Cartesian2( 5, 5),
-//             scaleByDistance: new Cesium.NearFarScalar(
-//                 500.0, 1.0, // Full visibility at 100 meters
-//                 2000.0, 0.4 // Half visibility at 1000 meters
-//             )
-//         }
-//     } as any);
-
-//     // Add the point entity to the data source
-//     pointDataSource.entities.add(pointEntity);
-//     pointDataSource.entities.add(pointEntity2);
-
-//     // Request a render update (if necessary)
-//     odinCesium.requestRender();
-// }
 
 // Handles clicking on a powerline
 odinCesium.setEntitySelectionHandler(powerlineSelection);
@@ -250,54 +176,6 @@ function handlePowerLineDataSet({powerlines}) {
     // Think about how to handle updates as in replacing data // updating already received data etc..
     // For now just going to replace everything on update
     lineDataSource.entities.removeAll();
-
-    // const test_line_data = [
-    //     [
-    //         [-123.10486705, 49.266949997],
-    //         [-123.103687403, 49.266935119],
-    //         [-123.103635106, 49.266934209],
-    //     ],
-    //     [
-    //         [-123.103687659, 49.266928374],
-    //         [-123.103937444, 49.2668337]
-    //     ],
-    //     [
-    //         [-123.103687659, 49.266928374],
-    //         [-123.103691751, 49.266820465]
-    //     ],
-    //     [
-    //         [-123.103687659, 49.266928374],
-    //         [-123.103635106, 49.266934209]
-    //     ],
-    //     [
-    //         [-123.103687659, 49.266928374],
-    //         [-123.103450979, 49.266820238]
-    //     ],
-    //     [
-    //         [-123.103635106, 49.266934209],
-    //         [-123.103169354, 49.266985916]
-    //     ],
-    //     [
-    //         [-123.103635106, 49.266934209],
-    //         [-123.1029626, 49.266922508]
-    //     ]
-    // ]
-
-    // test_line_data.forEach((line, index) => {
-    //     const lineEntity = new Cesium.Entity({
-    //         polyline: {
-    //             positions: Cesium.Cartesian3.fromDegreesArray(line.flat()),
-    //             width: 2, // Default width if not specified
-    //             material: Cesium.Color.RED // Default color if not specified
-    //         },
-    //         _type : LINE_TYPE,
-    //         powId: index,
-    //         time: "2021-08-12 12:00:00"
-    //     } as any);
-
-    //     // Add the line entity to the data source
-    //     lineDataSource.entities.add(lineEntity);
-    // });
     
     // Iterate over each line and create an entity for it
     convertServerPowerlineToCesiumLines(powerlines).forEach(line => {
@@ -322,7 +200,7 @@ function handlePowerLineDataSet({powerlines}) {
 }
 
 function initPowerLineDetailsView() {
-    let view = ui.getList("powerlines.selectedPowerline");
+    const view = ui.getList("powerlines.selectedPowerline");
     if (view) {
         ui.setListItemDisplayColumns(view, ["fit", "header"], [
             { name: "powId", tip: "Id of line", width: "3rem", attrs: [], map: e => e.powId },

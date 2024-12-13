@@ -1,19 +1,27 @@
-#![allow(unused_variables)]
-
 use crate::*;
 
 use std::fmt::Debug;
-// use serde::{Deserialize, Serialize};
-// use chrono::{DateTime, Utc};
 
-// This so be info about the total OASIS dataset
-// #[derive(Debug)]
-// pub struct AwesenseDataSettings {
-//     pub connection_info: AwesenseSqlInfo,
-//     pub grid_info: Vec<Grid>,
-//     connection_pool: sqlx::Pool<Postgres>,
-//     connection_string: String
-// }
+// Define the common column list
+// The shape of returned row must match the GridElement struct
+const GRID_ELEMENT_COLUMNS: &str = r#"
+    grid_id,
+    grid_element_id,
+    type as type_,
+    customer_type,
+    phases,
+    is_underground,
+    is_producer,
+    is_consumer,
+    is_switchable,
+    switch_is_open,
+    terminal1_cn,
+    terminal2_cn,
+    power_flow_direction,
+    upstream_grid_element_id,
+    ST_AsText(geometry) AS geometry,
+    meta
+"#;
 
 #[derive(Debug)]
 pub struct AwesenseDataSet {
@@ -31,32 +39,12 @@ impl AwesenseDataSet {
         let connection_pool = sqlx::postgres::PgPool::connect(&connection_string).await?;
         let grid_info: Vec<Grid> = sqlx::query_as("SELECT * FROM grid").fetch_all(&connection_pool).await?;
 
-        let grid_elements: Vec<GridElement> = sqlx::query_as(
-            r#"
-            SELECT 
-                grid_id,
-                grid_element_id,
-                type as type_,
-                customer_type,
-                phases,
-                is_underground,
-                is_producer,
-                is_consumer,
-                is_switchable,
-                switch_is_open,
-                terminal1_cn,
-                terminal2_cn,
-                power_flow_direction,
-                upstream_grid_element_id,
-                ST_AsText(geometry) AS geometry,
-                meta
-            FROM grid_element
-            WHERE grid_id = $1
-            "#
-        )
-        .bind("awefice") // Bind the grid_id parameter
-        .fetch_all(&connection_pool)
-        .await?;
+        let sql_query = format!( "SELECT {} FROM grid_element WHERE grid_id = $1", GRID_ELEMENT_COLUMNS);
+
+        let grid_elements: Vec<GridElement> = sqlx::query_as(&sql_query)
+            .bind("awefice") // Bind the grid_id parameter
+            .fetch_all(&connection_pool)
+            .await?;
 
         Ok(AwesenseDataSet { connection_info: info, grid_info, connection_pool, connection_string, grid_elements })
     }
@@ -64,26 +52,6 @@ impl AwesenseDataSet {
     pub async fn get_trace_elements(&self, trace: &TraceMessage) -> Vec<GridElement> {
         let grid_element_id = &trace.grid_element_id;
         let trace_name = trace.trace_name.as_str();
-
-        // Define the common column list
-        const GRID_ELEMENT_COLUMNS: &str = r#"
-            grid_id,
-            grid_element_id,
-            type as type_,
-            customer_type,
-            phases,
-            is_underground,
-            is_producer,
-            is_consumer,
-            is_switchable,
-            switch_is_open,
-            terminal1_cn,
-            terminal2_cn,
-            power_flow_direction,
-            upstream_grid_element_id,
-            ST_AsText(geometry) AS geometry,
-            meta
-        "#;
 
         // Choose the appropriate database function based on trace_name
         let sql_query = match trace_name {
@@ -115,10 +83,10 @@ impl AwesenseDataSet {
 
         
         let grid_elements: Vec<GridElement> = sqlx::query_as(&sql_query)
-        .bind("awefice") // TODO Change this for other grids later
-        .bind(grid_element_id) // Bind the grid_id parameter
-        .fetch_all(&self.connection_pool)
-        .await.unwrap();
+            .bind("awefice") // TODO Change this for other grids later
+            .bind(grid_element_id) // Bind the grid_id parameter
+            .fetch_all(&self.connection_pool)
+            .await.unwrap();
 
         grid_elements
     }
@@ -190,23 +158,23 @@ impl_actor! { match msg for Actor<AwesenseActor<I, U>, AwesenseImportActorMsg>
         // we expect the data to ever change.
         let hself = self.hself.clone();
         // let starting_data = OasisDataSet::from_csv("OASIS_Power_Data.csv", true).expect("Error getting the Oasis data from the CSV");
-        // println!("Got the csv data in Oasis Start");
+        // debug!("Got the csv data in Oasis Start");
         let _ = hself.send_msg( InitializeAwesense()).await;
     }
 
     ExecSnapshotActionAwesense => cont! { 
-        println!("Awesense Exec SnapShoot Action");
+        debug!("Awesense Exec SnapShoot Action");
         let _ = msg.0.execute( &self.data_store.grid_elements ).await; 
     }
 
     TraceDetailsAwesense => cont! { 
-        println!("Awesense Trace Details");
+        debug!("Awesense Trace Details");
         let trace_elements = &self.data_store.get_trace_elements(&msg.1).await;
         let _ = msg.0.execute( trace_elements ).await; 
     }
 
     InitializeAwesense => cont! { 
-        println!("Awesense Initialize on awesenseActor");
+        debug!("Awesense Initialize on awesenseActor");
         // should anything happen is <Err> comes back from init? 
         let _ = self.init().await; 
     }

@@ -8,14 +8,14 @@ use odin_server::prelude::*;
 pub mod errors;
 pub use errors::*;
 
-pub mod web;
-pub use web::*;
+pub mod basic_web;
+pub use basic_web::*;
 
-pub mod actor;
-pub use actor::*;
+pub mod basic_actor;
+pub use basic_actor::*;
 
-pub mod live_importer;
-pub use live_importer::*;
+pub mod basic_live_importer;
+pub use basic_live_importer::*;
 
 pub mod oasis_actor;
 pub use oasis_actor::*;

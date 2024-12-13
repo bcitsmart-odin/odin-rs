@@ -1,5 +1,5 @@
 // These are just for VSCode's intellisense, comment them out when compiling or won't work correctly
-// I could not figure out a good way to handle how the files change places when run
+// I could not figure out a good way to handle how the files are in a different place when run
 // @ts-ignore
 // declare const util: typeof import("../../odin_server/assets/ui_util.js"); // @ts-ignore
 // declare const ws: typeof import("../../odin_server/assets/ws.js"); // @ts-ignore
@@ -14,14 +14,9 @@ import * as ws from "../odin_server/ws.js"; // @ts-ignore
 import * as odinCesium from "../odin_cesium/odin_cesium.js";
 
 declare const Cesium: typeof import("cesium");
+import type { Entity, CustomDataSource } from "cesium";
 
 const MODULE_PATH = util.asset_path(import.meta.url);
-
-const AWESENSE_GRID_ELEMENT = "awesenseGridElement";
-const AWESENSE_SETTINGS = "awesenseSettings";
-const GRID_ELEMENT_DETAILS = "awesenseElementDetails";
-
-const AWESENSE_DEMO_NAME = "Awesense Demo Data";
 
 ws.addWsHandler( MODULE_PATH, handleWsMessages);
 
@@ -33,6 +28,8 @@ interface GeometryType {
     LineString?: [number, number][];
 }
 
+// This interface should match the shape of the sql query results
+// Edit this if you change the shape of the query results
 interface GridElement {
     grid_id?: string;
     grid_element_id?: string;
@@ -52,11 +49,20 @@ interface GridElement {
     meta?: Record<string, any>; // JSONB field is represented as an object
 }
 
-let grid_element_list = [] as GridElement[];
-let traceDataSource = null;
+// Extend the Entity type to include a `_type` field
+interface CustomEntity extends Entity {
+    _type?: string;
+}
 
-let selectedGridElement = null;
-let awesenseElementSource;
+const AWESENSE_SETTINGS = "awesenseSettings";
+const GRID_ELEMENT_DETAILS = "awesenseElementDetails";
+
+
+let grid_element_list = [] as GridElement[];
+let traceDataSource: CustomDataSource = null;
+
+let selectedGridElement: string = null;
+let awesenseElementSource: CustomDataSource = null;
 
 const iconMap = {
     Meter: "./asset/bcit_smart/icons/meter.svg",
@@ -78,6 +84,7 @@ const phaseToColor = {
     ABC: '#FFFF00', // Yellow
 };
 
+// If you want to add support for more element types, you will have to add them here and to the iconMap
 const SUPPORTED_ELEMENT_TYPES = ["Meter", "Photovoltaic", "Fuse", "CircuitBreaker", "Transformer", "Battery", "Pole", "Switch", "EVCharger", "ACLineSegment"];
 
 const svgCache = {}; // Cache for modified SVGs
@@ -116,7 +123,7 @@ function createAwesenseSettingsWindow() {
             elementVisibility[type] = isChecked;
 
             // Toggle visibility of entities of this type
-            awesenseElementSource.entities.values.forEach(entity => {
+            awesenseElementSource.entities.values.forEach((entity: CustomEntity) => {
                 if (entity._type === type) {
                     entity.show = isChecked;
                 }
@@ -209,14 +216,7 @@ function createAwesenseDetailsWindow() {
     );
 }
 
-function checkboxToggleShowPoints(event) {
-    const cb = ui.getCheckBox(event.target);
-    if (cb) {
-        toggleAwesensePoints( ui.isCheckBoxSelected(cb));
-    }
-}
-
-function toggleAwesensePoints(showLines) {
+function toggleAwesensePoints(showLines: boolean) {
     awesenseElementSource.show = showLines ?? true;
     odinCesium.requestRender();
 }
@@ -255,7 +255,7 @@ function formatGeometry(geometry: GeometryType): string {
 /**
  * Builds the details window for the selected Awesense Grid Element
  */
-function buildGridElementDetailsVisualization(pointName: string, window: HTMLDivElement ) {
+function buildGridElementDetailsVisualization(pointName: string, window: HTMLDivElement) {
     const titleBar = window.querySelector(".ui_titlebar");
     if (titleBar) {
         const titleTextNode = Array.from(titleBar.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
@@ -264,7 +264,7 @@ function buildGridElementDetailsVisualization(pointName: string, window: HTMLDiv
         }
     }
 
-    // Replace the content in the `ui_window_content`
+    // Replace the content in the `ui_window_content` with content for that grid element
     const content = window.querySelector(".ui_window_content");
     if (content) {
         // Clear the existing content
@@ -348,12 +348,12 @@ function buildGridElementDetailsVisualization(pointName: string, window: HTMLDiv
     }
 }
 
-function handleWsMessages(msgType, msg) {
+function handleWsMessages(msgType: string, msg: unknown) {
     // console.log("ws message received by oasis_points.js, type: ", msgType);
     // console.log(msg);
     switch (msgType) {
-        case "awesense_element_list": handleAwesenseElementList(msg); break;
-        case "awesense_trace_response": handleAwesenseTraceResponse(msg); break;
+        case "awesense_element_list": handleAwesenseElementList(msg as GridElement[]); break;
+        case "awesense_trace_response": handleAwesenseTraceResponse(msg as GridElement[]); break;
         default: {
             console.log("Unknown message type: ", msgType);
             console.log(msg);
@@ -362,7 +362,7 @@ function handleWsMessages(msgType, msg) {
 }
 
 /**
- * Parses the Awesense Data in a way convenient to use in line chart
+ * Parses the Awesense Data in a way convenient to use in Cesium
  */
 function handleAwesenseElementList(new_awesense_data: GridElement[]) {
     grid_element_list = new_awesense_data;
@@ -383,7 +383,7 @@ function handleAwesenseTraceResponse(response: GridElement[]) {
     const elementCounts = {};
     response.forEach((element) => {
         if (element.type_ === "ACLineSegment") {
-            const lineEntity = new Cesium.Entity({
+            const lineEntity: CustomEntity = new Cesium.Entity({
                 polyline: {
                     positions: Cesium.Cartesian3.fromDegreesArray(element.geometry.LineString.flat()),
                     width: 8,
@@ -391,8 +391,8 @@ function handleAwesenseTraceResponse(response: GridElement[]) {
                 },
                 description: element.grid_element_id, // Tooltip text for the point
                 name: element.grid_element_id, // Name of the entity
-                _type: element.type_, // Custom property to identify the entity type
-            } as any);
+            });
+            lineEntity._type = element.type_; // Custom property to identify the entity type
 
             traceDataSource.entities.add(lineEntity);
         }
@@ -407,7 +407,14 @@ function handleAwesenseTraceResponse(response: GridElement[]) {
     odinCesium.requestRender();
 }
 
-async function getColoredSvg(type_, fillColor) {
+/**
+ * Fetches the SVG icon for a given type and fills it with the specified color
+ * 
+ * This could be removed if all the needed icons are premade with the correct colors
+ * But it also allows us to dynamically change the color of the icons with config or
+ * perhaps user controls.
+ */
+async function getColoredSvg(type_: string, fillColor: string) {
     // Initialize cache for the type if it doesn't exist
     if (!svgCache[type_]) { svgCache[type_] = {}; }
 
@@ -488,19 +495,19 @@ async function buildAwesenseElementsDataSource() {
         odinCesium.addDataSource(awesenseElementSource);
     }
 
-    // Clear out any existing entities
+    // Clear out any existing entities, we sending full data each time ATM
     awesenseElementSource.entities.removeAll();
 
-    grid_element_list.forEach(async (element, index) => {
+    grid_element_list.forEach(async (element) => {
         if (element.geometry && element.geometry.Point) {
             const icon = iconMap[element.type_] || null;
 
-            // Going to skip the point if it doesn't have a valid icon for now
+            // Going to skip the point if it doesn't have a valid icon for now, can add support for other types later
             if (!icon) { return; }
 
             const coloredSvg = await getColoredSvg(element.type_, element.phases ? phaseToColor[element.phases] : "#000000");
 
-            const pointEntity = new Cesium.Entity({
+            const pointEntity: CustomEntity = new Cesium.Entity({
                 position: Cesium.Cartesian3.fromDegrees(element.geometry.Point[0], element.geometry.Point[1]),
                 point: icon ? undefined : {
                     pixelSize: 10,
@@ -519,7 +526,7 @@ async function buildAwesenseElementsDataSource() {
 
                 description: element.grid_element_id, // Tooltip text for the point
                 name: element.grid_element_id, // Name of the entity
-                _type: element.type_, // Custom property to identify the entity type
+                // _type: element.type_, // Custom property to identify the entity type
                 label: {
                     text: element.type_ === "Meter" ? element.grid_element_id : undefined,
                     font: config.font,
@@ -534,11 +541,12 @@ async function buildAwesenseElementsDataSource() {
                         2000.0, 0.4 // Half visibility
                     )
                 }
-            } as any);
+            });
+            pointEntity._type = element.type_; // Custom property to identify the entity type
 
             awesenseElementSource.entities.add(pointEntity);
         } else if (element.geometry && element.geometry.LineString) {
-            const lineEntity = new Cesium.Entity({
+            const lineEntity: CustomEntity = new Cesium.Entity({
                 polyline: {
                     positions: Cesium.Cartesian3.fromDegreesArray(element.geometry.LineString.flat()),
                     width: 2,
@@ -546,8 +554,8 @@ async function buildAwesenseElementsDataSource() {
                 },
                 description: element.grid_element_id, // Tooltip text for the point
                 name: element.grid_element_id, // Name of the entity
-                _type: element.type_, // Custom property to identify the entity type
-            } as any);
+            });
+            lineEntity._type = element.type_; // Custom property to identify the entity type
 
             awesenseElementSource.entities.add(lineEntity);
         }

@@ -17,7 +17,7 @@ use odin_server::prelude::*;
 use odin_cesium::ImgLayerService;
 
 use crate::{load_asset, load_config};
-use crate::actor::{ExecSnapshotAction, PowerLineImportActorMsg, PowerLineSet};
+use crate::basic_actor::{ExecSnapshotAction, PowerLineImportActorMsg, PowerLineSet};
 
 //--- aux types for creating JSON messages
 

@@ -1,5 +1,5 @@
 // These are just for VSCode's intellisense, comment them out when compiling or won't work correctly
-// I could not figure out a good way to handle how the files change places when run
+// I could not figure out a good way to handle how the files are in a different place when run
 // @ts-ignore
 // declare const util: typeof import("../../odin_server/assets/ui_util.js"); // @ts-ignore
 // declare const ws: typeof import("../../odin_server/assets/ws.js"); // @ts-ignore
@@ -12,15 +12,13 @@ import * as ui from "../odin_server/ui.js"; // @ts-ignore
 import * as ws from "../odin_server/ws.js"; // @ts-ignore
 import * as odinCesium from "../odin_cesium/odin_cesium.js";
 const MODULE_PATH = util.asset_path(import.meta.url);
-const AWESENSE_GRID_ELEMENT = "awesenseGridElement";
+ws.addWsHandler(MODULE_PATH, handleWsMessages);
 const AWESENSE_SETTINGS = "awesenseSettings";
 const GRID_ELEMENT_DETAILS = "awesenseElementDetails";
-const AWESENSE_DEMO_NAME = "Awesense Demo Data";
-ws.addWsHandler(MODULE_PATH, handleWsMessages);
 let grid_element_list = [];
 let traceDataSource = null;
 let selectedGridElement = null;
-let awesenseElementSource;
+let awesenseElementSource = null;
 const iconMap = {
     Meter: "./asset/bcit_smart/icons/meter.svg",
     Photovoltaic: "./asset/bcit_smart/icons/solar-panel.svg",
@@ -39,6 +37,7 @@ const phaseToColor = {
     C: '#0000FF', // Blue
     ABC: '#FFFF00', // Yellow
 };
+// If you want to add support for more element types, you will have to add them here and to the iconMap
 const SUPPORTED_ELEMENT_TYPES = ["Meter", "Photovoltaic", "Fuse", "CircuitBreaker", "Transformer", "Battery", "Pole", "Switch", "EVCharger", "ACLineSegment"];
 const svgCache = {}; // Cache for modified SVGs
 const elementVisibility = {};
@@ -67,7 +66,7 @@ function createAwesenseSettingsWindow() {
             const isChecked = event.target.checked;
             elementVisibility[type] = isChecked;
             // Toggle visibility of entities of this type
-            awesenseElementSource.entities.values.forEach(entity => {
+            awesenseElementSource.entities.values.forEach((entity) => {
                 if (entity._type === type) {
                     entity.show = isChecked;
                 }
@@ -131,12 +130,6 @@ function createAwesenseSettingsWindow() {
 function createAwesenseDetailsWindow() {
     return ui.Window("Point Details", GRID_ELEMENT_DETAILS, "./asset/bcit_smart/button_svg.svg")(ui.Panel("data sets", true, "awesense-details-window")());
 }
-function checkboxToggleShowPoints(event) {
-    const cb = ui.getCheckBox(event.target);
-    if (cb) {
-        toggleAwesensePoints(ui.isCheckBoxSelected(cb));
-    }
-}
 function toggleAwesensePoints(showLines) {
     awesenseElementSource.show = showLines ?? true;
     odinCesium.requestRender();
@@ -180,7 +173,7 @@ function buildGridElementDetailsVisualization(pointName, window) {
             titleTextNode.nodeValue = pointName;
         }
     }
-    // Replace the content in the `ui_window_content`
+    // Replace the content in the `ui_window_content` with content for that grid element
     const content = window.querySelector(".ui_window_content");
     if (content) {
         // Clear the existing content
@@ -257,7 +250,7 @@ function handleWsMessages(msgType, msg) {
     }
 }
 /**
- * Parses the Awesense Data in a way convenient to use in line chart
+ * Parses the Awesense Data in a way convenient to use in Cesium
  */
 function handleAwesenseElementList(new_awesense_data) {
     grid_element_list = new_awesense_data;
@@ -284,8 +277,8 @@ function handleAwesenseTraceResponse(response) {
                 },
                 description: element.grid_element_id, // Tooltip text for the point
                 name: element.grid_element_id, // Name of the entity
-                _type: element.type_, // Custom property to identify the entity type
             });
+            lineEntity._type = element.type_; // Custom property to identify the entity type
             traceDataSource.entities.add(lineEntity);
         }
         elementCounts[element.type_] = (elementCounts[element.type_] || 0) + 1;
@@ -295,6 +288,13 @@ function handleAwesenseTraceResponse(response) {
     // TODO
     odinCesium.requestRender();
 }
+/**
+ * Fetches the SVG icon for a given type and fills it with the specified color
+ *
+ * This could be removed if all the needed icons are premade with the correct colors
+ * But it also allows us to dynamically change the color of the icons with config or
+ * perhaps user controls.
+ */
 async function getColoredSvg(type_, fillColor) {
     // Initialize cache for the type if it doesn't exist
     if (!svgCache[type_]) {
@@ -359,12 +359,12 @@ async function buildAwesenseElementsDataSource() {
         });
         odinCesium.addDataSource(awesenseElementSource);
     }
-    // Clear out any existing entities
+    // Clear out any existing entities, we sending full data each time ATM
     awesenseElementSource.entities.removeAll();
-    grid_element_list.forEach(async (element, index) => {
+    grid_element_list.forEach(async (element) => {
         if (element.geometry && element.geometry.Point) {
             const icon = iconMap[element.type_] || null;
-            // Going to skip the point if it doesn't have a valid icon for now
+            // Going to skip the point if it doesn't have a valid icon for now, can add support for other types later
             if (!icon) {
                 return;
             }
@@ -384,7 +384,7 @@ async function buildAwesenseElementsDataSource() {
                 } : undefined,
                 description: element.grid_element_id, // Tooltip text for the point
                 name: element.grid_element_id, // Name of the entity
-                _type: element.type_, // Custom property to identify the entity type
+                // _type: element.type_, // Custom property to identify the entity type
                 label: {
                     text: element.type_ === "Meter" ? element.grid_element_id : undefined,
                     font: config.font,
@@ -399,6 +399,7 @@ async function buildAwesenseElementsDataSource() {
                     )
                 }
             });
+            pointEntity._type = element.type_; // Custom property to identify the entity type
             awesenseElementSource.entities.add(pointEntity);
         }
         else if (element.geometry && element.geometry.LineString) {
@@ -410,8 +411,8 @@ async function buildAwesenseElementsDataSource() {
                 },
                 description: element.grid_element_id, // Tooltip text for the point
                 name: element.grid_element_id, // Name of the entity
-                _type: element.type_, // Custom property to identify the entity type
             });
+            lineEntity._type = element.type_; // Custom property to identify the entity type
             awesenseElementSource.entities.add(lineEntity);
         }
     });

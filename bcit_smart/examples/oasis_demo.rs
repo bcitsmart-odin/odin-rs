@@ -8,11 +8,11 @@ use odin_actor::ActorHandle;
 
 pub use bcit_smart::errors::*;
 
-pub use bcit_smart::web::*;
+pub use bcit_smart::basic_web::*;
 
-pub use bcit_smart::actor::*;
+pub use bcit_smart::basic_actor::*;
 
-pub use bcit_smart::live_importer::*;
+pub use bcit_smart::basic_live_importer::*;
 
 pub use bcit_smart::oasis_actor::*;
 pub use bcit_smart::oasis_web::*;
@@ -28,7 +28,7 @@ pub struct TestImageService {}
 impl SpaService for TestImageService {
 
     fn add_dependencies (&self, spa_builder: SpaServiceList) -> SpaServiceList {
-        spa_builder.add( => build_service!( => UiService::new()))
+        spa_builder.add( build_service!( => UiService::new()))
     }
 
     fn add_components (&self, spa: &mut SpaComponents) -> OdinServerResult<()> {
